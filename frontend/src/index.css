@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-green:      #10B981;
+  --primary-green-dark: #059669;
+  --text-primary:       #1E293B;
+  --text-secondary:     #64748B;
+}
