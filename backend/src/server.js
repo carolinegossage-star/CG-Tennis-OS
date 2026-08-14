@@ -122,6 +122,8 @@ app.use('/ai-assist', aiRouter);
 app.use('/business-metrics', businessRouter);
 app.use('/community-knowledge', communityRouter);
 app.use('/checklists', checklistsRouter);
+// Mounted before '/admin' so route matching order can never shadow these paths.
+app.use('/admin/access', require('./routes/adminAccess'));
 app.use('/admin', adminRouter);
 app.use('/weather', require('./routes/weatherRoutes'));
 app.use('/voice-capture', require('./routes/voiceCapture'));
