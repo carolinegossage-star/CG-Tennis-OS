@@ -88,15 +88,39 @@ async function sendTrialNudgeEmail(email, name, missing) {
   `);
 }
 
-async function sendTrialExtendedEmail(email, name) {
+async function sendTrialDay7Email(email, name, progress = {}) {
   const url = `${appUrl}/dashboard`;
-  await send(email, "You've unlocked an extra 7 days, free", `
+  await send(email, 'You’re halfway through your trial', `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+      <h2>Hi ${name},</h2>
+      <p>You’re halfway through your trial. Here’s what you’ve already achieved.</p>
+      <p>Keep turning your coaching work into a system you can build on every week.</p>
+      <a href="${url}" style="background:#1a4d2e;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:12px;">Continue building</a>
+      <p style="color:#6b7280;font-size:12px;margin-top:24px;">CG Tennis OS — Coaching Intelligence, Human Wisdom.</p>
+    </div>
+  `);
+}
+
+async function sendTrialDay13Email(email, name) {
+  const url = `${appUrl}/pricing`;
+  await send(email, 'Your trial ends tomorrow', `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+      <h2>Hi ${name},</h2>
+      <p>Your trial ends tomorrow. Here’s what you’ll lose if you don’t upgrade.</p>
+      <p>Choose the plan that fits your active player caseload and keep your coaching data, reflections, and reports available.</p>
+      <a href="${url}" style="background:#1a4d2e;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:12px;">Review plans</a>
+      <p style="color:#6b7280;font-size:12px;margin-top:24px;">CG Tennis OS — Coaching Intelligence, Human Wisdom.</p>
+    </div>
+  `);
+}
+
+async function sendTrialExtendedEmail(email, name) {
+  const url = `${appUrl}/pricing`;
+  await send(email, "Your trial has ended — here's an extra 7 days", `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
       <h2>Nice work, ${name}.</h2>
-      <p>You've been putting the system to real use, so we've added 7 extra days to your trial, on us.</p>
-      <a href="${url}" style="background:#1a4d2e;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:12px;">
-        Keep going
-      </a>
+      <p>Your trial has ended — here’s an extra 7 days to finish exploring, or upgrade now.</p>
+      <a href="${url}" style="background:#1a4d2e;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:12px;">Explore plans</a>
       <p style="color:#6b7280;font-size:12px;margin-top:24px;">CG Tennis OS — Coaching Intelligence, Human Wisdom.</p>
     </div>
   `);
@@ -107,10 +131,8 @@ async function sendTrialExpiredEmail(email, name) {
   await send(email, 'Your CG Tennis OS trial has ended', `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
       <h2>Hi ${name},</h2>
-      <p>Your 14-day trial has come to an end. Choose Starter or Professional to keep everything you've built, or get in touch if you're not sure which fits.</p>
-      <a href="${url}" style="background:#1a4d2e;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:12px;">
-        Choose your plan
-      </a>
+      <p>Your trial has ended. Upgrade now to keep your data and continue using CG Tennis OS.</p>
+      <a href="${url}" style="background:#1a4d2e;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin-top:12px;">Upgrade now</a>
       <p style="color:#6b7280;font-size:12px;margin-top:24px;">CG Tennis OS — Coaching Intelligence, Human Wisdom.</p>
     </div>
   `);
@@ -121,6 +143,8 @@ module.exports = {
   sendPasswordResetEmail,
   sendAlertEmail,
   sendTrialNudgeEmail,
+  sendTrialDay7Email,
+  sendTrialDay13Email,
   sendTrialExtendedEmail,
   sendTrialExpiredEmail,
 };

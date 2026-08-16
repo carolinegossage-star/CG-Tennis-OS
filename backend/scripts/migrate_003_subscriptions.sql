@@ -1,6 +1,6 @@
 -- ─── SUBSCRIPTION / STRIPE COLUMNS ────────────────────────────────────────────
 -- Idempotent and safe against the live database. Existing subscription columns
--- are preserved; legacy starter values are normalized to solo.
+-- are preserved; only legacy starter values are normalized to solo.
 
 ALTER TABLE users
   ADD COLUMN IF NOT EXISTS stripe_customer_id     VARCHAR(255),
