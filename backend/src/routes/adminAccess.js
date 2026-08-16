@@ -26,7 +26,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { query } = require('../config/database');
 const logger = require('../utils/logger');
 
-const VALID_PLANS = ['starter', 'professional', 'academy'];
+const VALID_PLANS = ['solo', 'professional', 'academy'];
 const VALID_STATUSES = ['trialing', 'active', 'restricted', 'canceled', 'past_due'];
 
 // UUID guard so a malformed :id produces a clean 400 rather than a
@@ -115,7 +115,7 @@ router.get('/users/:id', authenticate, authorize('super_admin'), async (req, res
 });
 
 // ─── PATCH /admin/access/users/:id — grant or restrict access ─────────────────
-// Body: { subscription_plan?: 'starter' | 'professional' | 'academy',
+// Body: { subscription_plan?: 'solo' | 'professional' | 'academy',
 //         subscription_status?: 'trialing' | 'active' | 'restricted' | 'canceled' | 'past_due' }
 router.patch('/users/:id', authenticate, authorize('super_admin'), async (req, res) => {
   const { subscription_plan, subscription_status } = req.body || {};
