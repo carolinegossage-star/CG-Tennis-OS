@@ -89,6 +89,12 @@ const authLimiter = rateLimit({
 
 app.use(limiter);
 app.use(compression());
+
+// ─── Stripe Webhooks ───────────────────────────────────────────────────────────
+// MUST be mounted before express.json(): Stripe signature verification needs the
+// raw request body, and the global JSON parser below would consume it first.
+app.use('/webhooks', require('./routes/webhookRoutes'));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -125,6 +131,7 @@ app.use('/checklists', checklistsRouter);
 app.use('/admin', adminRouter);
 app.use('/weather', require('./routes/weatherRoutes'));
 app.use('/voice-capture', require('./routes/voiceCapture'));
+app.use('/stripe', require('./routes/stripeRoutes'));
 
 // Blueprint Gap-Fill Routes
 app.use('/coaching-identity', identityRouter);

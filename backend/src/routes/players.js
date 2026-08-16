@@ -6,6 +6,13 @@ const { authenticate, authorize, audit } = require('../middleware/auth');
 const retentionService = require('../services/retentionService');
 const logger = require('../utils/logger');
 
+const ACTIVE_PLAYER_CAPS = { solo: 35, professional: 100 };
+const LEGACY_PLAN_ALIASES = { starter: 'solo' };
+
+function normalizedPlan(plan) {
+  return LEGACY_PLAN_ALIASES[plan] || plan || 'solo';
+}
+
 // GET /players — list coach's players
 router.get('/', authenticate, async (req, res) => {
   const { search, risk, active = 'true', limit = 50, offset = 0 } = req.query;
@@ -110,6 +117,41 @@ router.post('/', authenticate, authorize('coach', 'academy_director', 'super_adm
   } = req.body;
 
   try {
+    // Academy and administrative roles are intentionally not constrained by
+    // the single-coach Solo/Professional caps. Multi-coach Academy capacity
+    // remains a separate contact-sales capability.
+    if (req.user.role === 'coach') {
+      const planResult = await query(
+        `SELECT COALESCE(subscription_plan, 'solo') AS subscription_plan
+           FROM users
+          WHERE id = $1`,
+        [req.user.id]
+      );
+      const plan = normalizedPlan(planResult.rows[0]?.subscription_plan);
+      const cap = ACTIVE_PLAYER_CAPS[plan];
+
+      if (cap) {
+        const countResult = await query(
+          `SELECT COUNT(*)::int AS count
+             FROM players
+            WHERE coach_id = $1 AND is_active = true`,
+          [req.user.id]
+        );
+        const activeCount = countResult.rows[0].count;
+        if (activeCount >= cap) {
+          return res.status(403).json({
+            error: `Your ${plan === 'solo' ? 'Solo Coach' : 'Professional Coach'} plan supports up to ${cap} active player profiles.`,
+            code: 'PLAYER_PROFILE_LIMIT_REACHED',
+            plan,
+            currentCount: activeCount,
+            limit: cap,
+            upgradePlan: plan === 'solo' ? 'professional' : null,
+            upgradeRequired: plan === 'solo',
+          });
+        }
+      }
+    }
+
     const result = await query(`
       INSERT INTO players (
         coach_id, name, date_of_birth, gender, nationality, email, phone,

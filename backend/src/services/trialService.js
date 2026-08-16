@@ -1,25 +1,9 @@
 /**
  * Trial Activation Service
  *
- * Every coach gets a 14-day free trial. Coaches who genuinely use the system
- * in that window earn an extra 7 days before they're asked to pick a paid plan.
- *
- * Qualifying activity (all three required):
- *   1. Added at least 1 player profile
- *   2. Planned at least 2 sessions
- *   3. Completed at least 1 session reflection/review
- *
- * Timeline:
- *   Day 10  → if not yet qualified, send a nudge encouraging the coach to
- *             finish the milestones and unlock the extension
- *   Day 14  → if qualified, automatically extend trial_expires_at by 7 days
- *             and mark trial_status = 'extended'
- *           → if not qualified, trial_status = 'expired' and the coach is
- *             shown the paywall/upgrade screen on next login
- *
- * This runs daily via a scheduled job (see server.js) and is safe to run
- * more than once a day — every check is idempotent (guarded by trial_status
- * and trial_nudge_sent_at).
+ * Every coach receives a 14-day trial. Coaches who genuinely use the system
+ * earn the existing automatic 7-day extension. This file remains the sole
+ * owner of trial scheduling and trial state.
  */
 
 const pool = require('../config/database');
@@ -35,11 +19,9 @@ async function getMilestoneProgress(userId) {
     pool.query(
       `SELECT COUNT(*)::int AS count FROM sessions
        WHERE coach_id = $1
-         AND (
-           (reflection_text IS NOT NULL AND reflection_text <> '')
+         AND ((reflection_text IS NOT NULL AND reflection_text <> '')
            OR reflection_voice_url IS NOT NULL
-           OR (reflection_checklist IS NOT NULL AND reflection_checklist::text <> '{}')
-         )`,
+           OR (reflection_checklist IS NOT NULL AND reflection_checklist::text <> '{}'))`,
       [userId]
     ),
   ]);
@@ -47,7 +29,6 @@ async function getMilestoneProgress(userId) {
   const playerAdded = playersResult.rows[0].count >= 1;
   const sessionsPlanned = sessionsResult.rows[0].count >= MIN_SESSIONS;
   const reflectionDone = reflectionsResult.rows[0].count >= 1;
-
   return {
     playerAdded,
     sessionsPlanned,
@@ -64,69 +45,105 @@ async function logEvent(userId, eventType, detail = {}) {
   );
 }
 
-/**
- * Day-10 nudge: coaches who haven't yet qualified get an AI-voiced (Coach
- * Caroline G) email pointing at whichever milestone they're missing.
- */
+async function sendDay7Nudges() {
+  const { rows: candidates } = await pool.query(
+    `SELECT id, email, name
+       FROM users
+      WHERE role = 'coach'
+        AND trial_status = 'active'
+        AND trial_day7_nudge_sent_at IS NULL
+        AND trial_started_at <= NOW() - INTERVAL '7 days'
+        AND trial_started_at > NOW() - INTERVAL '13 days'`
+  );
+  let sent = 0;
+  for (const coach of candidates) {
+    try {
+      const progress = await getMilestoneProgress(coach.id);
+      await emailService.sendTrialDay7Email(coach.email, coach.name, progress);
+      await pool.query('UPDATE users SET trial_day7_nudge_sent_at = NOW() WHERE id = $1', [coach.id]);
+      await logEvent(coach.id, 'day7_nudge_sent', { progress });
+      sent += 1;
+    } catch (err) {
+      logger.error('Day-7 trial nudge failed', { userId: coach.id, error: err.message });
+    }
+  }
+  return sent;
+}
+
+async function sendDay13Nudges() {
+  const { rows: candidates } = await pool.query(
+    `SELECT id, email, name
+       FROM users
+      WHERE role = 'coach'
+        AND trial_status = 'active'
+        AND trial_day13_nudge_sent_at IS NULL
+        AND trial_started_at <= NOW() - INTERVAL '13 days'
+        AND trial_started_at > NOW() - INTERVAL '14 days'`
+  );
+  let sent = 0;
+  for (const coach of candidates) {
+    try {
+      await emailService.sendTrialDay13Email(coach.email, coach.name);
+      await pool.query('UPDATE users SET trial_day13_nudge_sent_at = NOW() WHERE id = $1', [coach.id]);
+      await logEvent(coach.id, 'day13_nudge_sent');
+      sent += 1;
+    } catch (err) {
+      logger.error('Day-13 trial nudge failed', { userId: coach.id, error: err.message });
+    }
+  }
+  return sent;
+}
+
+// Existing day-10 milestone nudge is retained as a separate retention touch.
 async function sendNudgeIfDue() {
   const { rows: candidates } = await pool.query(
-    `SELECT id, email, name, trial_started_at
-     FROM users
-     WHERE role = 'coach'
-       AND trial_status = 'active'
-       AND trial_nudge_sent_at IS NULL
-       AND trial_started_at <= NOW() - INTERVAL '10 days'
-       AND trial_started_at >  NOW() - INTERVAL '14 days'`
+    `SELECT id, email, name
+       FROM users
+      WHERE role = 'coach'
+        AND trial_status = 'active'
+        AND trial_nudge_sent_at IS NULL
+        AND trial_started_at <= NOW() - INTERVAL '10 days'
+        AND trial_started_at > NOW() - INTERVAL '14 days'`
   );
-
+  let sent = 0;
   for (const coach of candidates) {
     const progress = await getMilestoneProgress(coach.id);
-    if (progress.qualified) continue; // will be picked up by the day-14 extension check instead
-
+    if (progress.qualified) continue;
     const missing = [];
     if (!progress.playerAdded) missing.push('add a player profile');
     if (!progress.sessionsPlanned) missing.push(`plan ${MIN_SESSIONS} sessions`);
     if (!progress.reflectionDone) missing.push('complete a session reflection');
-
     try {
       await emailService.sendTrialNudgeEmail(coach.email, coach.name, missing);
       await pool.query('UPDATE users SET trial_nudge_sent_at = NOW() WHERE id = $1', [coach.id]);
       await logEvent(coach.id, 'nudge_sent', { missing });
-      logger.info('Trial nudge sent', { userId: coach.id, missing });
+      sent += 1;
     } catch (err) {
       logger.error('Trial nudge failed to send', { userId: coach.id, error: err.message });
     }
   }
-
-  return candidates.length;
+  return sent;
 }
 
-/**
- * Day-14 resolution: qualified coaches get 7 extra days automatically;
- * everyone else is marked expired and sees the upgrade prompt.
- */
 async function resolveExpiringTrials() {
   const { rows: expiring } = await pool.query(
     `SELECT id, email, name
-     FROM users
-     WHERE role = 'coach'
-       AND trial_status = 'active'
-       AND trial_expires_at <= NOW()`
+       FROM users
+      WHERE role = 'coach'
+        AND trial_status = 'active'
+        AND trial_expires_at <= NOW()`
   );
-
   let extended = 0;
   let expired = 0;
-
   for (const coach of expiring) {
     const progress = await getMilestoneProgress(coach.id);
-
     if (progress.qualified) {
       await pool.query(
         `UPDATE users
-         SET trial_expires_at = trial_expires_at + INTERVAL '7 days',
-             trial_extended = true,
-             trial_status = 'extended'
-         WHERE id = $1`,
+            SET trial_expires_at = trial_expires_at + INTERVAL '7 days',
+                trial_extended = true,
+                trial_status = 'extended'
+          WHERE id = $1`,
         [coach.id]
       );
       await logEvent(coach.id, 'extended', { reason: 'milestones_met' });
@@ -137,7 +154,7 @@ async function resolveExpiringTrials() {
       }
       extended += 1;
     } else {
-      await pool.query(`UPDATE users SET trial_status = 'expired' WHERE id = $1`, [coach.id]);
+      await pool.query("UPDATE users SET trial_status = 'expired' WHERE id = $1", [coach.id]);
       await logEvent(coach.id, 'expired', { progress });
       try {
         await emailService.sendTrialExpiredEmail(coach.email, coach.name);
@@ -147,36 +164,34 @@ async function resolveExpiringTrials() {
       expired += 1;
     }
   }
-
   return { extended, expired, checked: expiring.length };
 }
 
-/**
- * Runs both checks. Call this once a day (see server.js scheduler).
- */
 async function runDailyTrialCheck() {
-  const nudged = await sendNudgeIfDue();
+  const day7 = await sendDay7Nudges();
+  const day10 = await sendNudgeIfDue();
+  const day13 = await sendDay13Nudges();
   const { extended, expired, checked } = await resolveExpiringTrials();
-  logger.info('Daily trial check complete', { nudged, extended, expired, checked });
-  return { nudged, extended, expired, checked };
+  const nudged = day7 + day10 + day13;
+  logger.info('Daily trial check complete', { nudged, day7, day10, day13, extended, expired, checked });
+  return { nudged, day7, day10, day13, extended, expired, checked };
 }
 
-/**
- * Call this at registration to start the clock.
- */
 async function startTrial(userId) {
   await pool.query(
     `UPDATE users
-     SET trial_started_at = NOW(),
-         trial_expires_at = NOW() + INTERVAL '14 days',
-         trial_status = 'active'
-     WHERE id = $1`,
+        SET trial_started_at = NOW(),
+            trial_expires_at = NOW() + INTERVAL '14 days',
+            trial_status = 'active'
+      WHERE id = $1`,
     [userId]
   );
 }
 
 module.exports = {
   getMilestoneProgress,
+  sendDay7Nudges,
+  sendDay13Nudges,
   sendNudgeIfDue,
   resolveExpiringTrials,
   runDailyTrialCheck,
