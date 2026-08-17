@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react';
 import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './hooks/useToast';
 import { initOfflineStorage } from './utils/offlineStorage';
 import Login from "./pages/Login";
