@@ -3,7 +3,6 @@ import { Sidebar } from '../components/Sidebar';
 import { BottomNav } from '../components/BottomNav';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 import { Toast } from '../components/Toast';
-import { FrameworkBadge } from '../components/FrameworkBadge';
 import { useSidebar } from '../hooks/useSidebar';
 import { useToast } from '../hooks/useToast';
 
@@ -57,7 +56,6 @@ export function CommunityKnowledge() {
         <header className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
           <button type="button" className="md:hidden p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]" onClick={toggleSidebar} aria-label="Toggle sidebar">☰</button>
           <h1 className="text-lg font-bold text-gray-800">Community</h1>
-          <FrameworkBadge name="Fearless Futures™ Tennis" size="xs" />
         </header>
         {loading && <LoadingOverlay message="Loading community…" />}
         {!loading && (
@@ -352,7 +350,7 @@ export function AlertsNotifications() {
 export function AIAssistant() {
   const { sidebarOpen, toggleSidebar, closeSidebar } = useSidebar();
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Hi — I\'m Coach Caroline G, your CG Tennis OS™ coaching intelligence engine. Ask me anything about your players, sessions, or coaching strategy. Remember: Joy is the Advantage.' },
+    { role: 'assistant', content: 'Your players. Your sessions. Your coaching. Ask CG what you need to know, decide or do next.' },
   ]);
   const [input, setInput]     = useState('');
   const [thinking, setThinking] = useState(false);
@@ -376,7 +374,7 @@ export function AIAssistant() {
       const data = await res.json();
       setMessages(m => [...m, { role: 'assistant', content: data.response ?? data.message ?? 'No response.' }]);
     } catch (err) {
-      setMessages(m => [...m, { role: 'assistant', content: `Sorry, I could not reach Coach Caroline G: ${err.message}` }]);
+      setMessages(m => [...m, { role: 'assistant', content: `Sorry, I could not reach CG right now: ${err.message}` }]);
     } finally { setThinking(false); }
   };
 
@@ -386,9 +384,10 @@ export function AIAssistant() {
       <div className="flex flex-1 flex-col" style={{ height: '100dvh' }}>
         <header className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 shrink-0">
           <button type="button" className="md:hidden p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]" onClick={toggleSidebar} aria-label="Toggle sidebar">☰</button>
-          <h1 className="text-lg font-bold text-gray-800">Coach Caroline G</h1>
-          <FrameworkBadge name="Apex Domain Engine™" size="xs" />
-          <FrameworkBadge name="TennisNLP™" size="xs" />
+          <div>
+            <h1 className="text-lg font-bold text-gray-800">CG</h1>
+            <p className="text-xs text-gray-500">Your Coaching OS Intelligence</p>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -412,7 +411,7 @@ export function AIAssistant() {
           <input type="text" value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-            placeholder="Ask about your players, sessions, or strategy…"
+            placeholder="Ask CG what you need to know, decide or do next…"
             disabled={thinking}
             className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green] disabled:opacity-50"
             aria-label="Message input" />

@@ -1,126 +1,111 @@
-// CG Tennis OS™ — Service Worker for Offline Functionality
-// Enables voice capture, session data, and tournament info to work offline
-// Auto-syncs when connection is restored
+// CG Tennis OS — resilient offline support for the web app.
+// The cache is versioned so browsers discard the pre-fix worker and assets.
 
-const CACHE_NAME = 'cg-tennis-os-v1';
-const RUNTIME_CACHE = 'cg-tennis-os-runtime-v1';
+const CACHE_NAME = 'cg-tennis-os-v2';
+const RUNTIME_CACHE = 'cg-tennis-os-runtime-v2';
 const VOICE_CAPTURE_DB = 'cg-tennis-voice-captures';
-const OFFLINE_ROUTES = [
-  '/',
-  '/index.html',
-  '/assets/',
-  '/dashboard',
-  '/players',
-  '/sessions/reflection',
-  '/identity',
-  '/tournaments'
-];
+const API_PREFIXES = ['/api', '/tournaments', '/players', '/business-metrics', '/weather', '/alerts'];
 
-// Install: Pre-cache critical assets
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Caching critical assets');
-      return cache.addAll([
-        '/',
-        '/index.html',
-        '/assets/vite.svg'
-      ]).catch(err => console.log('[SW] Cache addAll error:', err));
-    }).then(() => self.skipWaiting())
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(['/', '/index.html']);
+
+    // Pre-cache the actual hashed Vite assets referenced by the current HTML.
+    // Never assume a source filename such as /assets/vite.svg exists in production.
+    try {
+      const html = await fetch('/index.html', { cache: 'no-store' });
+      const source = await html.text();
+      const assets = [...source.matchAll(/(?:src|href)=["'](\/assets\/[^"']+)["']/g)].map(([, url]) => url);
+      if (assets.length) await cache.addAll([...new Set(assets)]);
+    } catch (error) {
+      console.warn('[SW] Hashed asset pre-cache skipped:', error);
+    }
+
+    await self.skipWaiting();
+  })());
 });
 
-// Activate: Clean up old caches
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE) {
-            console.log('[SW] Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    const cacheNames = await caches.keys();
+    await Promise.all(cacheNames
+      .filter(name => ![CACHE_NAME, RUNTIME_CACHE].includes(name))
+      .map(name => caches.delete(name)));
+    await self.clients.claim();
+  })());
 });
 
-// Fetch: Network-first with offline fallback
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+  if (request.method !== 'GET') return;
+
   const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
 
-  // Skip non-GET requests and external APIs
-  if (request.method !== 'GET') {
-    return;
-  }
-
-  // API calls: Network-first, cache fallback
-  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/tournaments') || url.pathname.startsWith('/players')) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response.ok) {
-            const cache = caches.open(RUNTIME_CACHE);
-            cache.then((c) => c.put(request, response.clone()));
-          }
-          return response;
-        })
-        .catch(() => {
-          return caches.match(request).then((cachedResponse) => {
-            return cachedResponse || new Response(
-              JSON.stringify({ offline: true, message: 'Offline mode: cached data displayed' }),
-              { headers: { 'Content-Type': 'application/json' } }
-            );
-          });
-        })
-    );
-    return;
-  }
-
-  // Static assets: Cache-first
-  if (request.destination === 'style' || request.destination === 'script' || request.destination === 'image') {
-    event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        return cachedResponse || fetch(request).then((response) => {
-          if (response.ok) {
-            const cache = caches.open(CACHE_NAME);
-            cache.then((c) => c.put(request, response.clone()));
-          }
-          return response;
-        });
-      })
-    );
-    return;
-  }
-
-  // HTML pages: Network-first
+  // Documents must remain SPA documents, even when their pathname resembles an API prefix.
   if (request.destination === 'document') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response.ok) {
-            const cache = caches.open(RUNTIME_CACHE);
-            cache.then((c) => c.put(request, response.clone()));
-          }
-          return response;
-        })
-        .catch(() => {
-          return caches.match(request).then((cachedResponse) => {
-            return cachedResponse || caches.match('/index.html');
-          });
-        })
-    );
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(request);
+        if (response.ok) {
+          const cache = await caches.open(RUNTIME_CACHE);
+          await cache.put(request, response.clone());
+        }
+        return response;
+      } catch (error) {
+        return (await caches.match(request)) || (await caches.match('/index.html')) ||
+          new Response('Offline page unavailable', { status: 503, headers: { 'Content-Type': 'text/plain' } });
+      }
+    })());
     return;
+  }
+
+  if (API_PREFIXES.some(prefix => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`))) {
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(request);
+        if (response.ok) {
+          const cache = await caches.open(RUNTIME_CACHE);
+          await cache.put(request, response.clone());
+        }
+        return response;
+      } catch (error) {
+        const cached = await caches.match(request);
+        return cached || new Response(
+          JSON.stringify({ offline: true, message: 'Offline mode: cached data displayed' }),
+          { status: 503, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+    })());
+    return;
+  }
+
+  if (['style', 'script', 'image', 'font'].includes(request.destination)) {
+    event.respondWith((async () => {
+      try {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+
+        const response = await fetch(request);
+        if (response.ok) {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(request, response.clone());
+        }
+        return response;
+      } catch (error) {
+        const cached = await caches.match(request);
+        return cached || new Response('Offline asset unavailable', {
+          status: 503,
+          headers: { 'Content-Type': 'text/plain' },
+        });
+      }
+    })());
   }
 });
 
-// Background Sync: Auto-sync voice captures when online
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-voice-captures') {
-    event.waitUntil(syncVoiceCaptures());
-  }
+  if (event.tag === 'sync-voice-captures') event.waitUntil(syncVoiceCaptures());
 });
 
 async function syncVoiceCaptures() {
@@ -129,14 +114,11 @@ async function syncVoiceCaptures() {
     const tx = db.transaction(VOICE_CAPTURE_DB, 'readonly');
     const store = tx.objectStore(VOICE_CAPTURE_DB);
     const pendingCaptures = await store.getAll();
-
     for (const capture of pendingCaptures) {
-      if (!capture.synced) {
-        await uploadVoiceCapture(capture);
-      }
+      if (!capture.synced) await uploadVoiceCapture(capture);
     }
-  } catch (err) {
-    console.error('[SW] Sync error:', err);
+  } catch (error) {
+    console.error('[SW] Sync error:', error);
   }
 }
 
@@ -147,24 +129,16 @@ async function uploadVoiceCapture(capture) {
   formData.append('playerId', capture.playerId);
 
   try {
-    const response = await fetch('/voice-capture/upload', {
-      method: 'POST',
-      body: formData,
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('cgto_token')}`
-      }
-    });
-
+    const response = await fetch('/voice-capture/upload', { method: 'POST', body: formData });
     if (response.ok) {
       const db = await openIndexedDB();
       const tx = db.transaction(VOICE_CAPTURE_DB, 'readwrite');
       const store = tx.objectStore(VOICE_CAPTURE_DB);
       capture.synced = true;
       await store.put(capture);
-      console.log('[SW] Voice capture synced:', capture.id);
     }
-  } catch (err) {
-    console.error('[SW] Upload error:', err);
+  } catch (error) {
+    console.error('[SW] Upload error:', error);
   }
 }
 

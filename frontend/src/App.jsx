@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ToastProvider } from './hooks/useToast';
 import { initOfflineStorage } from './utils/offlineStorage';
 import Login from "./pages/Login";
@@ -13,7 +13,15 @@ import TournamentLiveDashboard from './pages/TournamentLiveDashboard';
 import LandingPage from './pages/LandingPage';
 import ArchetypeAssessment from './pages/ArchetypeAssessment';
 import { Pricing } from './pages/Pricing';
+import Register from './pages/Register';
 import { CommunityKnowledge, SafetyChecklists, AlertsNotifications, AIAssistant } from './pages/pages7to10';
+function ProtectedRoute({ children }) {
+  const location = useLocation();
+  const token = localStorage.getItem('cgto_token');
+  if (!token) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+  return children;
+}
+
 function AppWithInit() {
   useEffect(() => {
     // Initialize offline storage on app load
@@ -32,18 +40,21 @@ function AppWithInit() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/archetype-assessment" element={<ArchetypeAssessment />} />
       <Route path="/pricing" element={<Pricing />} />
+      <Route path="/register" element={<Register />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/players" element={<PlayerRetention />} />
-      <Route path="/identity" element={<IdentityBuilder />} />
-      <Route path="/sessions/reflection" element={<SessionReflection />} />
-      <Route path="/business" element={<BusinessDashboard />} />
-      <Route path="/community" element={<CommunityKnowledge />} />
-      <Route path="/checklists" element={<SafetyChecklists />} />
-      <Route path="/alerts" element={<AlertsNotifications />} />
-      <Route path="/ai-assistant" element={<AIAssistant />} />
-      <Route path="/tournaments/events/:eventId/live" element={<TournamentLiveDashboard />} />
-      <Route path="/tournaments" element={<TournamentsCalendar />} />
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/players" element={<ProtectedRoute><PlayerRetention /></ProtectedRoute>} />
+      <Route path="/identity" element={<ProtectedRoute><IdentityBuilder /></ProtectedRoute>} />
+      <Route path="/sessions/reflection" element={<ProtectedRoute><SessionReflection /></ProtectedRoute>} />
+      <Route path="/business" element={<ProtectedRoute><BusinessDashboard /></ProtectedRoute>} />
+      <Route path="/business-metrics" element={<ProtectedRoute><BusinessDashboard /></ProtectedRoute>} />
+      <Route path="/weather" element={<ProtectedRoute><BusinessDashboard /></ProtectedRoute>} />
+      <Route path="/community" element={<ProtectedRoute><CommunityKnowledge /></ProtectedRoute>} />
+      <Route path="/checklists" element={<ProtectedRoute><SafetyChecklists /></ProtectedRoute>} />
+      <Route path="/alerts" element={<ProtectedRoute><AlertsNotifications /></ProtectedRoute>} />
+      <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
+      <Route path="/tournaments/events/:eventId/live" element={<ProtectedRoute><TournamentLiveDashboard /></ProtectedRoute>} />
+      <Route path="/tournaments" element={<ProtectedRoute><TournamentsCalendar /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );

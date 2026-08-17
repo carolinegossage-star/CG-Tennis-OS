@@ -3,7 +3,6 @@ import { Sidebar } from '../components/Sidebar';
 import { BottomNav } from '../components/BottomNav';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 import { Toast } from '../components/Toast';
-import { FrameworkBadge } from '../components/FrameworkBadge';
 import { useSidebar } from '../hooks/useSidebar';
 import { useToast } from '../hooks/useToast';
 
@@ -76,7 +75,6 @@ export default function BusinessDashboard() {
         <header className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
           <button type="button" className="md:hidden p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]" onClick={toggleSidebar} aria-label="Toggle sidebar">☰</button>
           <h1 className="text-lg font-bold text-gray-800">Business Dashboard</h1>
-          <span className="rounded-full border px-2 py-0.5 text-[10px] font-semibold" style={{background:"#FDF4FF",color:"#6B21A8",borderColor:"#E879F9"}}>Apex Domain Engine™</span>
           <button type="button" onClick={fetchAll} className="ml-auto rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]" aria-label="Refresh">↻</button>
         </header>
 
@@ -130,7 +128,6 @@ export default function BusinessDashboard() {
                 aria-expanded={biOpen}>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-gray-700 text-sm">Business Intelligence</span>
-                  <span style={{background:"#FDF4FF",color:"#6B21A8",border:"1px solid #E879F9",borderRadius:"9999px",padding:"1px 8px",fontSize:"10px",fontWeight:600}}>Apex Domain Engine™</span>
                 </div>
                 <span className="text-gray-400 text-sm">{biOpen ? '▲' : '▼'}</span>
               </button>

@@ -4,7 +4,6 @@ import { Sidebar } from '../components/Sidebar';
 import { BottomNav } from '../components/BottomNav';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 import { Toast } from '../components/Toast';
-import { FrameworkBadge } from '../components/FrameworkBadge';
 import { useSidebar } from '../hooks/useSidebar';
 import { useToast } from '../hooks/useToast';
 import { useTournaments, groupByMonth, ENTRY_STATUS_LABELS, ENTRY_STATUS_COLOURS } from '../hooks/useTournaments';
@@ -36,7 +35,7 @@ export default function TournamentsCalendar() {
         <header className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
           <button type="button" className="md:hidden p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]" onClick={toggleSidebar} aria-label="Toggle sidebar">☰</button>
           <h1 className="text-lg font-bold text-gray-800">Tournament Calendar</h1>
-          <FrameworkBadge name="Apex Domain Engine™" size="xs" />
+          <span className="text-xs text-gray-400">World tournament finder powered by TennisAtlas</span>
           <span className="ml-auto text-sm text-gray-400">{filtered.length} tournaments</span>
         </header>
 
