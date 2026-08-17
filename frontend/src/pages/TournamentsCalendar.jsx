@@ -3,7 +3,6 @@ import { Sidebar } from '../components/Sidebar';
 import { BottomNav } from '../components/BottomNav';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 import { Toast } from '../components/Toast';
-import { FrameworkBadge } from '../components/FrameworkBadge';
 import { useSidebar } from '../hooks/useSidebar';
 import { useToast } from '../hooks/useToast';
 import { useTournaments } from '../hooks/useTournaments';
@@ -41,10 +40,9 @@ export default function TournamentsCalendar() {
             <button type="button" onClick={toggleSidebar} className="md:hidden p-1" aria-label="Toggle sidebar">☰</button>
             <div>
               <h1 className="text-xl font-bold text-gray-900">World Tournament Finder</h1>
-              <p className="text-xs text-gray-500 font-mono uppercase tracking-widest">Powered by WorldMonitor™ Engine</p>
+              <p className="text-xs text-gray-500 font-mono uppercase tracking-widest">World tournament finder powered by TennisAtlas</p>
             </div>
           </div>
-          <FrameworkBadge name="Global Discovery" size="sm" />
         </header>
 
         <main className="flex-1 overflow-hidden flex flex-col md:flex-row">

@@ -82,7 +82,7 @@ export default function LandingPage() {
                 <div className="h-3 w-3 rounded-full bg-amber-500/50"></div>
                 <div className="h-3 w-3 rounded-full bg-green-500/50"></div>
               </div>
-              <div className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">CG TENNIS OS — APEX DOMAIN ENGINE™</div>
+              <div className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">CG TENNIS OS — COACHING INSIGHT</div>
               <div className="w-12"></div>
             </div>
             
@@ -105,7 +105,7 @@ export default function LandingPage() {
                 <div className="flex items-end justify-between">
                   <div>
                     <h3 className="text-2xl font-bold text-white mb-1">Player Retention Analytics</h3>
-                    <p className="text-sm text-gray-500">Real-time risk assessment via TennisNLP™</p>
+                    <p className="text-sm text-gray-500">Real-time coaching insight</p>
                   </div>
                   <div className="h-10 w-32 bg-[--primary-green] rounded-xl flex items-center justify-center text-xs font-bold text-white">GENERATE REPORT</div>
                 </div>

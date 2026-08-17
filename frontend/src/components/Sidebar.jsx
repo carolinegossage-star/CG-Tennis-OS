@@ -10,7 +10,7 @@ const NAV = [
   { key: 'community',    href: '/community',           icon: '🌐', label: 'Community' },
   { key: 'checklists',   href: '/checklists',          icon: '✅', label: 'Safety' },
   { key: 'alerts',       href: '/alerts',              icon: '🔔', label: 'Alerts' },
-  { key: 'ai-assistant', href: '/ai-assistant',        icon: '🤖', label: 'Coach Caroline G' },
+  { key: 'ai-assistant', href: '/ai-assistant',        icon: '🤖', label: 'Ask CG' },
 ];
 export function Sidebar({ isOpen, onClose, activePage }) {
   return (

@@ -3,7 +3,6 @@ import { Sidebar } from '../components/Sidebar';
 import { BottomNav } from '../components/BottomNav';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 import { Toast } from '../components/Toast';
-import { FrameworkBadge } from '../components/FrameworkBadge';
 import { VoiceCapture } from '../components/VoiceCapture';
 import { useSidebar } from '../hooks/useSidebar';
 import { useToast } from '../hooks/useToast';
@@ -142,7 +141,6 @@ export default function SessionReflection() {
             {view === 'new' ? 'Log session' : view === 'reflect' ? 'Session reflection' : 'Sessions'}
           </h1>
           <FrameworkBadge name="Playing To Excel™" size="xs" />
-          {view === 'reflect' && <FrameworkBadge name="TennisMindset™" size="xs" />}
           {view === 'list' && (
             <button type="button" onClick={() => setView('new')} className="ml-auto rounded-lg bg-[--primary-green] px-4 py-1.5 text-sm font-medium text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">
               + Log session
@@ -252,7 +250,6 @@ export default function SessionReflection() {
                 <div>
                   <div className="mb-3 flex items-center gap-2">
                     <p className="text-sm font-semibold text-gray-700">Trio Effect reflection</p>
-                    <FrameworkBadge name="TennisMindset™" size="xs" />
                   </div>
                   <div className="space-y-4">
                     {TRIO_PROMPTS.map((p, i) => (

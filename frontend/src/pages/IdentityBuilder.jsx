@@ -3,7 +3,6 @@ import { Sidebar } from '../components/Sidebar';
 import { BottomNav } from '../components/BottomNav';
 import { LoadingOverlay } from '../components/LoadingOverlay';
 import { Toast } from '../components/Toast';
-import { FrameworkBadge } from '../components/FrameworkBadge';
 import { useSidebar } from '../hooks/useSidebar';
 import { useToast } from '../hooks/useToast';
 
@@ -86,7 +85,7 @@ export default function IdentityBuilder() {
     onChange: (e) => setForm(f => ({ ...f, [key]: e.target.value })),
   });
 
-  const FRAMEWORKS = ['Playing To Excel™','TennisNLP™','TennisMindset™','Fearless Futures™ Tennis','The Concord Framework™','Apex Domain Engine™'];
+  const FRAMEWORKS = ['Playing To Excel™'];
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -95,7 +94,6 @@ export default function IdentityBuilder() {
         <header className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
           <button type="button" className="md:hidden p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]" onClick={toggleSidebar} aria-label="Toggle sidebar">☰</button>
           <h1 className="text-lg font-bold text-gray-800">Identity Builder</h1>
-          <FrameworkBadge name="The Concord Framework™" size="xs" />
           <button type="button" onClick={handleSave} disabled={saving} className="ml-auto rounded-lg bg-[--primary-green] px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">
             {saving ? 'Saving…' : 'Save'}
           </button>
@@ -117,7 +115,7 @@ export default function IdentityBuilder() {
             {activeTab === 'identity' && (
               <div className="max-w-xl space-y-5">
                 {[
-                  { key: 'coaching_philosophy', label: 'Coaching philosophy', badge: 'TennisMindset™', rows: 4, placeholder: 'Describe your coaching philosophy…' },
+                  { key: 'coaching_philosophy', label: 'Coaching philosophy', badge: null, rows: 4, placeholder: 'Describe your coaching philosophy…' },
                   { key: 'core_values',         label: 'Core values',         badge: null,             rows: 3, placeholder: 'e.g. Integrity, resilience, curiosity…' },
                   { key: 'signature_style',     label: 'Signature coaching style', badge: null,        rows: 3, placeholder: 'What makes your coaching unmistakably yours?…' },
                 ].map(f => (
@@ -143,10 +141,6 @@ export default function IdentityBuilder() {
 
             {activeTab === 'behavioural' && (
               <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <FrameworkBadge name="TennisNLP™" size="xs" />
-                  <FrameworkBadge name="Fearless Futures™ Tennis" size="xs" />
-                </div>
                 {behavioural ? (
                   <div className="space-y-3">
                     {Object.entries(behavioural).filter(([k]) => k !== 'id' && k !== 'coach_id').map(([key, val]) => val != null && (
@@ -158,7 +152,7 @@ export default function IdentityBuilder() {
                   </div>
                 ) : (
                   <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center">
-                    <p className="text-sm text-gray-400">No behavioural intelligence data yet. Complete the TennisNLP™ profile to unlock insights.</p>
+                    <p className="text-sm text-gray-400">No behavioural intelligence data yet. Complete your coaching identity profile to unlock insights.</p>
                   </div>
                 )}
               </div>
@@ -167,9 +161,8 @@ export default function IdentityBuilder() {
             {activeTab === 'growth' && (
               <div className="max-w-xl space-y-5">
                 <div>
-                  <div className="mb-1.5 flex items-center gap-2">
+                  <div className="mb-1.5">
                     <label className="text-sm font-semibold text-gray-700">3-year vision</label>
-                    <FrameworkBadge name="Apex Domain Engine™" size="xs" />
                   </div>
                   <textarea {...field('three_year_vision')} rows={4} placeholder="Where do you want to be in 3 years as a coach?…"
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[--primary-green]"
