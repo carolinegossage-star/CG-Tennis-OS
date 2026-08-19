@@ -7,6 +7,7 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const { query } = require('../config/database');
 const logger = require('../utils/logger');
+const { getAccessContext } = require('./accessContext');
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -122,10 +123,19 @@ async function runApexAnalysis(coachId, playerId, analysisType, styleProfile, pr
 // ─── Subscription Gate Check ──────────────────────────────────────────────────
 async function requiresActiveSubscription(userId) {
   const result = await query(
-    'SELECT subscription_tier, subscription_status FROM users WHERE id = $1',
+    `SELECT subscription_tier, subscription_status,
+            is_admin, is_comped, comped_plan,
+            subscription_plan, trial_status, trial_expires_at
+       FROM users WHERE id = $1`,
     [userId]
   );
   const user = result.rows[0];
+  const access = getAccessContext(user);
+
+  // Additive bypass: admins never expire; comped users receive the configured
+  // tier. Ordinary users retain the original Apex active-subscription check.
+  if (access.isAdmin) return true;
+  if (access.isComped) return access.effectivePlan === 'professional';
   return user?.subscription_tier === 'apex_coach_suite' && user?.subscription_status === 'active';
 }
 

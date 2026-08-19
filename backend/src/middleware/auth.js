@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { query } = require('../config/database');
 const logger = require('../utils/logger');
+const { getAccessContext } = require('../services/accessContext');
 
 // ─── Authenticate JWT ──────────────────────────────────────────────────────────
 const authenticate = async (req, res, next) => {
@@ -15,7 +16,10 @@ const authenticate = async (req, res, next) => {
 
     // Verify user still exists and is active
     const result = await query(
-      'SELECT id, email, role, name, language_pref, timezone, is_active FROM users WHERE id = $1',
+      `SELECT id, email, role, name, language_pref, timezone, is_active,
+              is_admin, is_comped, comped_plan, subscription_plan,
+              subscription_status, trial_status, trial_expires_at
+         FROM users WHERE id = $1`,
       [decoded.userId]
     );
 
@@ -24,6 +28,7 @@ const authenticate = async (req, res, next) => {
     }
 
     req.user = result.rows[0];
+    req.user.access = getAccessContext(req.user);
     next();
   } catch (err) {
     if (err.name === 'TokenExpiredError') {

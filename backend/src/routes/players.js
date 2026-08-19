@@ -5,6 +5,7 @@ const { query, cache } = require('../config/database');
 const { authenticate, authorize, audit } = require('../middleware/auth');
 const retentionService = require('../services/retentionService');
 const logger = require('../utils/logger');
+const { getAccessContext } = require('../services/accessContext');
 
 const ACTIVE_PLAYER_CAPS = { solo: 35, professional: 100 };
 const LEGACY_PLAN_ALIASES = { starter: 'solo' };
@@ -121,16 +122,20 @@ router.post('/', authenticate, authorize('coach', 'academy_director', 'super_adm
     // the single-coach Solo/Professional caps. Multi-coach Academy capacity
     // remains a separate contact-sales capability.
     if (req.user.role === 'coach') {
-      const planResult = await query(
-        `SELECT COALESCE(subscription_plan, 'solo') AS subscription_plan
-           FROM users
-          WHERE id = $1`,
-        [req.user.id]
-      );
-      const plan = normalizedPlan(planResult.rows[0]?.subscription_plan);
+      const access = req.user.access || getAccessContext(req.user);
+      // Admins have unlimited capacity. Comped users use only their comped
+      // tier. Ordinary users continue through the existing DB plan lookup.
+      const plan = access.isAdmin || access.isComped
+        ? access.effectivePlan
+        : normalizedPlan((await query(
+          `SELECT COALESCE(subscription_plan, 'solo') AS subscription_plan
+             FROM users
+            WHERE id = $1`,
+          [req.user.id]
+        )).rows[0]?.subscription_plan);
       const cap = ACTIVE_PLAYER_CAPS[plan];
 
-      if (cap) {
+      if (!access.isAdmin && cap) {
         const countResult = await query(
           `SELECT COUNT(*)::int AS count
              FROM players
