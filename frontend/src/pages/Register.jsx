@@ -54,16 +54,16 @@ export default function Register() {
           {error && <div role="alert" className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">{error}</div>}
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-              <input value={form.name} onChange={e => update('name', e.target.value)} required maxLength={255} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="Your name" />
+              <label htmlFor="register-name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <input id="register-name" name="name" autoComplete="name" value={form.name} onChange={e => update('name', e.target.value)} required maxLength={255} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="Your name" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input type="email" value={form.email} onChange={e => update('email', e.target.value)} required className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="you@example.com" />
+              <label htmlFor="register-email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input id="register-email" name="email" type="email" autoComplete="email" value={form.email} onChange={e => update('email', e.target.value)} required className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="you@example.com" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <input type="password" value={form.password} onChange={e => update('password', e.target.value)} required minLength={8} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="At least 8 characters, with upper/lowercase and a number" />
+              <label htmlFor="register-password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <input id="register-password" name="password" type="password" autoComplete="new-password" value={form.password} onChange={e => update('password', e.target.value)} required minLength={8} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="At least 8 characters, with upper/lowercase and a number" />
             </div>
             <fieldset>
               <legend className="block text-sm font-medium text-gray-700 mb-2">Choose your starting plan</legend>

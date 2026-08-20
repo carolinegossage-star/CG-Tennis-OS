@@ -71,7 +71,7 @@ export function CommunityKnowledge() {
             {tab === 'community' && (
               <>
                 <div className="mb-4 flex gap-2">
-                  <textarea value={newPost} onChange={e => setNewPost(e.target.value)} rows={2}
+                  <textarea id="community-new-post" name="newPost" value={newPost} onChange={e => setNewPost(e.target.value)} rows={2}
                     placeholder="Share something with the community…"
                     className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[--primary-green]"
                     aria-label="New post" />
@@ -205,7 +205,7 @@ export function SafetyChecklists() {
               <div className="max-w-md space-y-3">
                 {(activeList.items ?? []).map((item, i) => (
                   <label key={i} className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 cursor-pointer hover:bg-gray-50 transition-colors">
-                    <input type="checkbox" checked={!!checked[i]} onChange={e => setChecked(c => ({ ...c, [i]: e.target.checked }))}
+                    <input id={`checklist-item-${i}`} name={`checklistItem-${i}`} type="checkbox" checked={!!checked[i]} onChange={e => setChecked(c => ({ ...c, [i]: e.target.checked }))}
                       className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-[--primary-green]" />
                     <span className={`text-sm ${checked[i] ? 'line-through text-gray-400' : 'text-gray-700'}`}>
                       {typeof item === 'string' ? item : (item.label ?? item.text ?? JSON.stringify(item))}
@@ -408,7 +408,7 @@ export function AIAssistant() {
         </div>
 
         <div className="shrink-0 border-t border-gray-200 bg-white p-3 flex gap-2">
-          <input type="text" value={input}
+          <input id="cg-assistant-message" name="assistantMessage" type="text" value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
             placeholder="Ask CG what you need to know, decide or do next…"

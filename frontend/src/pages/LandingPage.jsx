@@ -48,7 +48,10 @@ export default function LandingPage() {
           
           <form onSubmit={handleLeadCapture} className="flex flex-col sm:flex-row gap-3 max-w-xl mx-auto mb-8">
             <input 
+              id="early-access-email"
+              name="email"
               type="email" 
+              autoComplete="email"
               placeholder="Enter your coaching email" 
               required
               value={email}

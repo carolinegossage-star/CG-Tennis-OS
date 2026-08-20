@@ -94,11 +94,11 @@ export default function PlayerRetention() {
             </div>
 
             <div className="mb-4 flex flex-wrap gap-3">
-              <input type="search" value={search} onChange={e => setSearch(e.target.value)}
+              <input id="player-search" name="playerSearch" type="search" value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Search players…"
                 className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green] w-48"
                 aria-label="Search players" />
-              <select value={filterRisk} onChange={e => setFilterRisk(e.target.value)}
+              <select id="player-risk-filter" name="riskLevel" value={filterRisk} onChange={e => setFilterRisk(e.target.value)}
                 className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green]"
                 aria-label="Filter by risk level">
                 <option value="all">All risk levels</option>

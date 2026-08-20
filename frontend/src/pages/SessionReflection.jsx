@@ -196,14 +196,14 @@ export default function SessionReflection() {
               <div className="max-w-xl space-y-4">
                 {[
                   { label: 'Player', el: (
-                    <select value={newForm.player_id} onChange={e => setNewForm(f => ({...f, player_id: e.target.value}))}
+                    <select id="session-player" name="playerId" value={newForm.player_id} onChange={e => setNewForm(f => ({...f, player_id: e.target.value}))}
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[--primary-green]" aria-label="Player">
                       <option value="">— Select player —</option>
                       {players.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
                     </select>
                   )},
                   { label: 'Session type', el: (
-                    <select value={newForm.session_type} onChange={e => setNewForm(f => ({...f, session_type: e.target.value}))}
+                    <select id="session-type" name="sessionType" value={newForm.session_type} onChange={e => setNewForm(f => ({...f, session_type: e.target.value}))}
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[--primary-green]" aria-label="Session type">
                       {SESSION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
@@ -217,18 +217,18 @@ export default function SessionReflection() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="mb-1 block text-sm font-medium text-gray-700">Date</label>
-                    <input type="date" value={newForm.session_date} onChange={e => setNewForm(f => ({...f, session_date: e.target.value}))}
+                    <input id="session-date" name="sessionDate" type="date" value={newForm.session_date} onChange={e => setNewForm(f => ({...f, session_date: e.target.value}))}
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green]" aria-label="Session date" />
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium text-gray-700">Duration (mins)</label>
-                    <input type="number" min="15" max="240" step="15" value={newForm.duration_minutes} onChange={e => setNewForm(f => ({...f, duration_minutes: e.target.value}))}
+                    <input id="session-duration" name="durationMinutes" type="number" min="15" max="240" step="15" value={newForm.duration_minutes} onChange={e => setNewForm(f => ({...f, duration_minutes: e.target.value}))}
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green]" aria-label="Duration" />
                   </div>
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Pre-session notes</label>
-                  <textarea value={newForm.session_plan_notes} onChange={e => setNewForm(f => ({...f, session_plan_notes: e.target.value}))}
+                  <textarea id="session-plan-notes" name="sessionPlanNotes" value={newForm.session_plan_notes} onChange={e => setNewForm(f => ({...f, session_plan_notes: e.target.value}))}
                     rows={3} placeholder="Goals, focus areas, player state…"
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[--primary-green]"
                     aria-label="Pre-session notes" />
@@ -257,6 +257,8 @@ export default function SessionReflection() {
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-[--primary-green] mb-0.5">Step {i + 1} — {p.step}</p>
                         <p className="text-xs text-gray-600 mb-2 italic">{p.q}</p>
                         <textarea
+                          id={`trio-${p.key}`}
+                          name={p.key}
                           value={reflForm[p.key]}
                           onChange={e => setReflForm(f => ({ ...f, [p.key]: e.target.value }))}
                           rows={2} placeholder="Your thoughts…"
@@ -268,7 +270,7 @@ export default function SessionReflection() {
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">General reflection</label>
-                  <textarea value={reflForm.reflection_text} onChange={e => setReflForm(f => ({...f, reflection_text: e.target.value}))}
+                  <textarea id="general-reflection" name="reflectionText" value={reflForm.reflection_text} onChange={e => setReflForm(f => ({...f, reflection_text: e.target.value}))}
                     rows={4} placeholder="Overall session notes…"
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[--primary-green]"
                     aria-label="General reflection" />

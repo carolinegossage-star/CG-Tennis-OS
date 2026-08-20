@@ -81,6 +81,8 @@ export default function IdentityBuilder() {
   };
 
   const field = (key) => ({
+    id: key,
+    name: key,
     value: form[key],
     onChange: (e) => setForm(f => ({ ...f, [key]: e.target.value })),
   });
@@ -124,14 +126,14 @@ export default function IdentityBuilder() {
                       <label className="text-sm font-semibold text-gray-700">{f.label}</label>
                       {f.badge && <FrameworkBadge name={f.badge} size="xs" />}
                     </div>
-                    <textarea {...field(f.key)} rows={f.rows} placeholder={f.placeholder}
+                    <textarea id={f.key} name={f.key} {...field(f.key)} rows={f.rows} placeholder={f.placeholder}
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[--primary-green]"
                       aria-label={f.label} />
                   </div>
                 ))}
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold text-gray-700">Primary framework</label>
-                  <select {...field('primary_framework')} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[--primary-green]" aria-label="Primary framework">
+                  <select id="primary_framework" name="primary_framework" {...field('primary_framework')} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[--primary-green]" aria-label="Primary framework">
                     <option value="">Select a framework</option>
                     {FRAMEWORKS.map(f => <option key={f} value={f}>{f}</option>)}
                   </select>
@@ -164,13 +166,13 @@ export default function IdentityBuilder() {
                   <div className="mb-1.5">
                     <label className="text-sm font-semibold text-gray-700">3-year vision</label>
                   </div>
-                  <textarea {...field('three_year_vision')} rows={4} placeholder="Where do you want to be in 3 years as a coach?…"
+                  <textarea id="three_year_vision" name="three_year_vision" {...field('three_year_vision')} rows={4} placeholder="Where do you want to be in 3 years as a coach?…"
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[--primary-green]"
                     aria-label="3-year vision" />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold text-gray-700">Growth focus areas</label>
-                  <textarea {...field('growth_focus_areas')} rows={3} placeholder="Key areas you want to develop…"
+                  <textarea id="growth_focus_areas" name="growth_focus_areas" {...field('growth_focus_areas')} rows={3} placeholder="Key areas you want to develop…"
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[--primary-green]"
                     aria-label="Growth focus areas" />
                 </div>

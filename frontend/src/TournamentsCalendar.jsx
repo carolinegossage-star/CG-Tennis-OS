@@ -51,11 +51,11 @@ export default function TournamentsCalendar() {
         {!loading && !error && (
           <main className="flex-1 overflow-y-auto p-4">
             <div className="mb-5 flex flex-wrap items-center gap-3">
-              <input type="search" value={search} onChange={e => setSearch(e.target.value)}
+              <input id="tournament-search" name="tournamentSearch" type="search" value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Search tournaments…"
                 className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green] w-48"
                 aria-label="Search tournaments" />
-              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+              <select id="tournament-entry-status" name="entryStatus" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
                 className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green]"
                 aria-label="Filter by entry status">
                 <option value="all">All statuses</option>
