@@ -5,8 +5,16 @@ import { LoadingOverlay } from '../components/LoadingOverlay';
 import { Toast } from '../components/Toast';
 import { useSidebar } from '../hooks/useSidebar';
 import { useToast } from '../hooks/useToast';
+import { CourtToonNudge } from '../components/CourtToonNudge';
+import spinLotus from '../assets/courttoons/spin-lotus-crop.webp';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '';
+const IDENTITY_NUDGE_DISMISSAL = 'cgto_nudge_identity_customisation_spin_dismissed';
+
+function isIdentityNudgeDismissed() {
+  if (typeof window === 'undefined') return false;
+  return window.localStorage.getItem(IDENTITY_NUDGE_DISMISSAL) === 'true';
+}
 const TABS = [
   { key: 'identity',    label: 'My Identity' },
   { key: 'behavioural', label: 'Behavioural Intelligence' },
@@ -21,6 +29,7 @@ export default function IdentityBuilder() {
   const [behavioural, setBehavioural] = useState(null);
   const [loading, setLoading]         = useState(true);
   const [saving, setSaving]           = useState(false);
+  const [identityNudgeDismissed, setIdentityNudgeDismissed] = useState(() => isIdentityNudgeDismissed());
   const [form, setForm] = useState({
     coaching_philosophy: '', core_values: '', signature_style: '',
     three_year_vision: '', primary_framework: '', growth_focus_areas: '',
@@ -116,6 +125,19 @@ export default function IdentityBuilder() {
 
             {activeTab === 'identity' && (
               <div className="max-w-xl space-y-5">
+                {!identityNudgeDismissed && !form.coaching_philosophy.trim() && !form.core_values.trim() && !form.signature_style.trim() && (
+                  <CourtToonNudge
+                    className="max-w-md"
+                    characterSrc={spinLotus}
+                    characterName="Spin"
+                    title="Make it your own"
+                    message="Not sure where to begin? Try one idea, then shape it your way."
+                    onDismiss={() => {
+                      window.localStorage.setItem(IDENTITY_NUDGE_DISMISSAL, 'true');
+                      setIdentityNudgeDismissed(true);
+                    }}
+                  />
+                )}
                 {[
                   { key: 'coaching_philosophy', label: 'Coaching philosophy', badge: null, rows: 4, placeholder: 'Describe your coaching philosophy…' },
                   { key: 'core_values',         label: 'Core values',         badge: null,             rows: 3, placeholder: 'e.g. Integrity, resilience, curiosity…' },
