@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { CourtToonNudge } from '../components/CourtToonNudge';
+import smashFistPump from '../assets/courttoons/smash-fist-pump-crop.webp';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '';
+const SMASH_UPGRADE_DISMISSAL = 'cgto_nudge_pricing_upgrade_smash_dismissed';
+
+function isSmashUpgradeDismissed() {
+  if (typeof window === 'undefined') return false;
+  return window.localStorage.getItem(SMASH_UPGRADE_DISMISSAL) === 'true';
+}
 
 function CheckoutButton({ plan, annual, children, className }) {
   const navigate = useNavigate();
@@ -45,6 +53,8 @@ function CheckoutButton({ plan, annual, children, className }) {
 
 export function Pricing() {
   const [annual, setAnnual] = useState(false);
+  const [smashUpgradeDismissed, setSmashUpgradeDismissed] = useState(() => isSmashUpgradeDismissed());
+  const isSignedIn = Boolean(localStorage.getItem('cgto_token'));
   const price = annual ? '228' : '19';
   const professionalPrice = annual ? '348' : '29';
 
@@ -64,6 +74,20 @@ export function Pricing() {
           </button>
           <span className={`text-sm ${annual ? 'text-gray-900 font-semibold' : 'text-gray-400'}`}>Annual <span className="text-gray-500 font-medium ml-1">12× monthly</span></span>
         </div>
+
+        {isSignedIn && !smashUpgradeDismissed && (
+          <CourtToonNudge
+            className="mx-auto mb-8 max-w-md"
+            characterSrc={smashFistPump}
+            characterName="Smash"
+            title="Your call"
+            message="When you are ready, choose the plan that fits and take the next step."
+            onDismiss={() => {
+              window.localStorage.setItem(SMASH_UPGRADE_DISMISSAL, 'true');
+              setSmashUpgradeDismissed(true);
+            }}
+          />
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
           <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
