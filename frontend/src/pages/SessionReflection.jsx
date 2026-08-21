@@ -6,8 +6,26 @@ import { Toast } from '../components/Toast';
 import { VoiceCapture } from '../components/VoiceCapture';
 import { useSidebar } from '../hooks/useSidebar';
 import { useToast } from '../hooks/useToast';
+import { CourtToonNudge } from '../components/CourtToonNudge';
+import { FrameworkBadge } from '../components/FrameworkBadge';
+import aceThumbsUp from '../assets/courttoons/ace-thumbs-up-crop.webp';
+import nettyGuide from '../assets/courttoons/netty-guide-crop.webp';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '';
+
+const NUDGE_DISMISSALS = {
+  firstSession: 'cgto_nudge_first_session_ace_dismissed',
+  sessionsOnboarding: 'cgto_nudge_sessions_onboarding_netty_dismissed',
+};
+
+function isNudgeDismissed(key) {
+  if (typeof window === 'undefined') return false;
+  return window.localStorage.getItem(key) === 'true';
+}
+
+function saveNudgeDismissal(key) {
+  if (typeof window !== 'undefined') window.localStorage.setItem(key, 'true');
+}
 
 const SESSION_TYPES = [
   { value: 'individual',      label: 'Individual' },
@@ -45,6 +63,8 @@ export default function SessionReflection() {
   const [selectedSession, setSelected]  = useState(null);
   const [saving, setSaving]             = useState(false);
   const [standbyResult, setStandbyResult] = useState(null);
+  const [showFirstSessionNudge, setShowFirstSessionNudge] = useState(false);
+  const [sessionsOnboardingDismissed, setSessionsOnboardingDismissed] = useState(() => isNudgeDismissed(NUDGE_DISMISSALS.sessionsOnboarding));
 
   const [newForm, setNewForm] = useState({
     player_id: '', session_type: 'individual', duration_minutes: 60,
@@ -97,6 +117,7 @@ export default function SessionReflection() {
   useEffect(() => { fetchSessions(); fetchPlayers(); }, [fetchSessions, fetchPlayers]);
 
   const handleCreateSession = async () => {
+    const isFirstLoggedSession = sessions.length === 0;
     setSaving(true);
     try {
       const res = await fetch(`${API_BASE}/sessions`, {
@@ -110,6 +131,7 @@ export default function SessionReflection() {
       });
       if (!res.ok) throw new Error(`${res.status}`);
       addToast({ type: 'success', message: 'Session logged' });
+      if (isFirstLoggedSession && !isNudgeDismissed(NUDGE_DISMISSALS.firstSession)) setShowFirstSessionNudge(true);
       setView('list'); fetchSessions();
     } catch (err) {
       addToast({ type: 'error', message: `Could not save session: ${err.message}` });
@@ -173,9 +195,22 @@ export default function SessionReflection() {
 
             {view === 'list' && (
               sessions.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-gray-200 p-12 text-center">
+                <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center sm:p-12">
                   <p className="text-2xl mb-2">📋</p>
                   <p className="text-sm text-gray-400">No sessions yet. Log your first one to get started.</p>
+                  {!sessionsOnboardingDismissed && (
+                    <CourtToonNudge
+                      className="mx-auto mt-5 max-w-md"
+                      characterSrc={nettyGuide}
+                      characterName="Netty"
+                      title="A quick guide"
+                      message="This is where your session story lives. Log the first one, then take a look around."
+                      onDismiss={() => {
+                        saveNudgeDismissal(NUDGE_DISMISSALS.sessionsOnboarding);
+                        setSessionsOnboardingDismissed(true);
+                      }}
+                    />
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -311,6 +346,19 @@ export default function SessionReflection() {
         )}
       </div>
       <BottomNav activePage="sessions" />
+      {showFirstSessionNudge && (
+        <CourtToonNudge
+          className="fixed bottom-20 right-4 z-40 w-[min(330px,calc(100vw-2rem))] md:bottom-5"
+          characterSrc={aceThumbsUp}
+          characterName="Ace"
+          title="First session logged"
+          message="Nice one. First one's always the best one to look back on."
+          onDismiss={() => {
+            saveNudgeDismissal(NUDGE_DISMISSALS.firstSession);
+            setShowFirstSessionNudge(false);
+          }}
+        />
+      )}
       {toasts.map(t => <Toast key={t.id} toast={t} onDismiss={removeToast} />)}
     </div>
   );
