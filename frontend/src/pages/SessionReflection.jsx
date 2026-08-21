@@ -44,6 +44,7 @@ export default function SessionReflection() {
   const [view, setView]                 = useState('list');
   const [selectedSession, setSelected]  = useState(null);
   const [saving, setSaving]             = useState(false);
+  const [standbyResult, setStandbyResult] = useState(null);
 
   const [newForm, setNewForm] = useState({
     player_id: '', session_type: 'individual', duration_minutes: 60,
@@ -54,6 +55,18 @@ export default function SessionReflection() {
     reflection_text: '',
     trio_prediction_error: '', trio_consolidation: '', trio_emotional_anchor: '',
   });
+
+  const notifyStandby = async (scope) => {
+    try {
+      const res = await fetch(`${API_BASE}/coach/session/${selectedSession.id}/notify-standby`, {
+        method: 'POST', headers: authHeaders(true), body: JSON.stringify({ scope }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not notify standby list');
+      setStandbyResult(data.notifications || []);
+      addToast({ type: 'success', message: data.notifications?.length ? 'Standby notification sent.' : 'No open standby places.' });
+    } catch (err) { addToast({ type: 'error', message: err.message }); }
+  };
 
   const authHeaders = (json = false) => ({
     Authorization: `Bearer ${localStorage.getItem('cgto_token')}`,
@@ -247,6 +260,19 @@ export default function SessionReflection() {
                   <p>{SESSION_TYPES.find(t => t.value === selectedSession.session_plan?.session_type)?.label ?? selectedSession.session_plan?.session_type} · {selectedSession.duration_minutes}min · {new Date(selectedSession.session_date).toLocaleDateString('en-GB')}</p>
                 </div>
                 <VoiceCapture sessionId={selectedSession.id} playerId={selectedSession.player_id} onCaptureSaved={() => fetchSessions()} />
+                {selectedSession.is_group_session && (
+                  <section className="rounded-lg border border-gray-200 bg-white p-4" aria-labelledby="standby-heading">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 id="standby-heading" className="text-sm font-semibold text-gray-700">Standby list</h3>
+                      <span className="text-[10px] text-gray-400">Only sends when you choose</span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button type="button" onClick={() => notifyStandby('next')} className="rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white">Notify next standby player</button>
+                      <button type="button" onClick={() => notifyStandby('whole_list')} className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700">Notify whole standby list</button>
+                    </div>
+                    {standbyResult?.length > 0 && <p className="mt-2 text-xs text-gray-500">Notification sent to {standbyResult.map(item => item.player_name).join(', ')}.</p>}
+                  </section>
+                )}
                 <div>
                   <div className="mb-3 flex items-center gap-2">
                     <p className="text-sm font-semibold text-gray-700">Trio Effect reflection</p>

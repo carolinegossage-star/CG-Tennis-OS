@@ -30,6 +30,10 @@ export default function PlayerRetention() {
   const [filterRisk, setFilterRisk]   = useState('all');
   const [selectedPlayer, setSelected] = useState(null);
   const [stats, setStats]             = useState(null);
+  const [flags, setFlags]             = useState([]);
+  const [draft, setDraft]             = useState(null);
+  const [draftTags, setDraftTags]     = useState([]);
+  const [draftLoading, setDraftLoading] = useState(false);
 
   const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('cgto_token')}` });
 
@@ -45,6 +49,51 @@ export default function PlayerRetention() {
     } finally { setLoading(false); }
   }, []);
 
+  const fetchFlags = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/coach/retention-flags`, { headers: authHeaders() });
+      if (res.ok) setFlags((await res.json()).flags ?? []);
+    } catch {}
+  }, []);
+
+  const dismissFlag = async (flagId) => {
+    try {
+      const res = await fetch(`${API_BASE}/coach/retention-flags/${flagId}/dismiss`, {
+        method: 'POST', headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error('Could not dismiss warning');
+      setFlags(current => current.filter(flag => flag.id !== flagId));
+    } catch (err) {
+      addToast({ type: 'error', message: err.message });
+    }
+  };
+
+  const generateDraft = async () => {
+    if (!selectedPlayer || draftLoading) return;
+    setDraftLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/coach/parent-draft`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player_id: selectedPlayer.id, tags: draftTags, include_retention_context: flags.some(flag => flag.player_id === selectedPlayer.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not generate draft');
+      setDraft(data);
+    } catch (err) {
+      addToast({ type: 'error', message: err.message });
+    } finally { setDraftLoading(false); }
+  };
+
+  const copyDraft = async () => {
+    if (!draft?.content) return;
+    await navigator.clipboard.writeText(draft.content);
+    if (draft.id) {
+      await fetch(`${API_BASE}/coach/parent-draft/${draft.id}/approve`, { method: 'POST', headers: authHeaders() });
+    }
+    addToast({ type: 'success', message: 'Draft copied. Review it and send manually.' });
+  };
+
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/players/analytics/retention`, { headers: authHeaders() });
@@ -53,7 +102,7 @@ export default function PlayerRetention() {
     } catch {}
   }, []);
 
-  useEffect(() => { fetchPlayers(); fetchStats(); }, [fetchPlayers, fetchStats]);
+  useEffect(() => { fetchPlayers(); fetchStats(); fetchFlags(); }, [fetchPlayers, fetchStats, fetchFlags]);
 
   const filtered = useMemo(() => players.filter(p => {
     if (filterRisk !== 'all' && p.burnout_risk_level !== filterRisk) return false;
@@ -79,6 +128,30 @@ export default function PlayerRetention() {
 
         {!loading && (
           <main className="flex-1 overflow-y-auto p-4">
+            {flags.length > 0 && (
+              <section className="mb-5 space-y-3" aria-labelledby="retention-warnings-heading">
+                <div className="flex items-center justify-between">
+                  <h2 id="retention-warnings-heading" className="text-sm font-bold text-gray-800">Early warnings</h2>
+                  <span className="text-xs text-gray-400">Needs your judgement</span>
+                </div>
+                {flags.map(flag => (
+                  <article key={flag.id} className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-amber-900">{flag.player_name} may need a check-in</p>
+                        <p className="mt-1 text-sm text-amber-800">
+                          {flag.player_name} has {flag.context?.daysSinceLastSession ?? 21} days since the last logged session. {flag.flag_reason}.
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => dismissFlag(flag.id)} className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100">
+                        Dismiss for 14 days
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </section>
+            )}
+
             <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
                 { label: 'Total players',  value: players.length,  colour: 'text-gray-800' },
@@ -187,7 +260,25 @@ export default function PlayerRetention() {
                 </div>
               ))}
             </div>
-            <button type="button" onClick={() => setSelected(null)} className="mt-4 w-full rounded-lg bg-[--primary-green] py-2 text-sm font-medium text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">Close</button>
+            <section className="mt-5 border-t border-gray-100 pt-4" aria-labelledby="parent-draft-heading">
+              <div className="flex items-center justify-between gap-2">
+                <h4 id="parent-draft-heading" className="text-sm font-semibold text-gray-800">Parent progress update</h4>
+                <span className="text-[10px] text-gray-400">Draft only</span>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {['Forehand depth', 'Serve placement', 'Great effort'].map(tag => (
+                  <button key={tag} type="button" onClick={() => setDraftTags(tags => tags.includes(tag) ? tags.filter(item => item !== tag) : [...tags, tag])} className={`rounded-full border px-2.5 py-1 text-xs ${draftTags.includes(tag) ? 'border-[--primary-green] bg-green-50 text-[--primary-green]' : 'border-gray-200 text-gray-500'}`}>{tag}</button>
+                ))}
+              </div>
+              <button type="button" onClick={generateDraft} disabled={draftLoading} className="mt-3 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{draftLoading ? 'Writing…' : draft ? 'Regenerate draft' : 'Draft update'}</button>
+              {draft?.content && (
+                <div className="mt-3 rounded-lg bg-gray-50 p-3 text-sm leading-6 text-gray-700">
+                  <p className="whitespace-pre-wrap">{draft.content}</p>
+                  <button type="button" onClick={copyDraft} className="mt-3 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700">Copy text</button>
+                </div>
+              )}
+            </section>
+            <button type="button" onClick={() => { setSelected(null); setDraft(null); setDraftTags([]); }} className="mt-4 w-full rounded-lg bg-[--primary-green] py-2 text-sm font-medium text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">Close</button>
           </div>
         </div>
       )}

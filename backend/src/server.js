@@ -13,6 +13,8 @@ const logger = require('./utils/logger');
 const wsService = require('./services/wsService');
 const alertService = require('./services/alertService');
 const trialService = require('./services/trialService');
+const retentionFlagService = require('./services/retentionFlagService');
+const parentDraftService = require('./services/parentDraftService');
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -133,6 +135,8 @@ app.use('/admin/access', require('./routes/adminAccess'));
 app.use('/admin', adminRouter);
 app.use('/weather', require('./routes/weatherRoutes'));
 app.use('/voice-capture', require('./routes/voiceCapture'));
+app.use('/coach', require('./routes/agenticFeatures'));
+app.use('/standby', require('./routes/standbyRoutes'));
 app.use('/stripe', require('./routes/stripeRoutes'));
 
 // Blueprint Gap-Fill Routes
@@ -206,6 +210,9 @@ async function start() {
     // Schedule daily trial activation check (nudges + extensions) at 08:00 UTC
     scheduleDailyTrialCheck();
 
+    // Schedule the separate retention-risk scan at 09:00 UTC.
+    scheduleDailyRetentionFlagScan();
+
     // Graceful shutdown
     process.on('SIGTERM', shutdown);
     process.on('SIGINT', shutdown);
@@ -227,6 +234,32 @@ function scheduleDailyScan() {
   }, delay);
 
   logger.info(`Daily deadline scan scheduled in ${Math.round(delay / 60000)} minutes`);
+}
+
+function scheduleDailyRetentionFlagScan() {
+  const runAt = new Date();
+  runAt.setUTCHours(9, 0, 0, 0);
+  if (runAt <= new Date()) runAt.setDate(runAt.getDate() + 1);
+  const delay = runAt - Date.now();
+
+  setTimeout(() => {
+    retentionFlagService.runDailyScan().catch((err) =>
+      logger.error('Daily retention flag scan failed', { error: err.message })
+    );
+    parentDraftService.purgeExpiredDrafts().catch((err) =>
+      logger.error('Parent draft purge failed', { error: err.message })
+    );
+    setInterval(() => {
+      retentionFlagService.runDailyScan().catch((err) =>
+        logger.error('Daily retention flag scan failed', { error: err.message })
+      );
+      parentDraftService.purgeExpiredDrafts().catch((err) =>
+        logger.error('Parent draft purge failed', { error: err.message })
+      );
+    }, 86400000);
+  }, delay);
+
+  logger.info(`Daily retention flag scan scheduled in ${Math.round(delay / 60000)} minutes`);
 }
 
 function scheduleDailyTrialCheck() {
