@@ -1,229 +1,397 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+
+const identityCards = [
+  {
+    number: '01',
+    title: 'Your week lives in too many places.',
+    body: 'Messages, notes and bookings should not need a treasure hunt.',
+    icon: 'calendar',
+  },
+  {
+    number: '02',
+    title: 'You remember the useful details on the drive home.',
+    body: 'The right thought deserves a home before the next session begins.',
+    icon: 'note',
+  },
+  {
+    number: '03',
+    title: 'Each player needs a clearer next step.',
+    body: 'See the story, then make the next session count.',
+    icon: 'path',
+  },
+  {
+    number: '04',
+    title: 'Your coaching time is the valuable part.',
+    body: 'Let the admin sit quietly in the background.',
+    icon: 'clock',
+  },
+];
+
+const featureLines = [
+  {
+    number: '01',
+    title: 'The week, in one view.',
+    line: 'Book, track and message from one calendar.',
+    voice: 'The bit where you stop chasing your own diary.',
+    accent: 'mint',
+  },
+  {
+    number: '02',
+    title: 'Every player, more clearly.',
+    line: "See every player's progress at a glance.",
+    voice: 'The sessions where it all clicks — right there, not buried in a notebook.',
+    accent: 'sun',
+  },
+  {
+    number: '03',
+    title: 'Notes that keep their meaning.',
+    line: 'Turn a quick voice note into a useful session record.',
+    voice: 'Say it while it is fresh. Pick it up when it matters.',
+    accent: 'clay',
+  },
+  {
+    number: '04',
+    title: 'A calmer parent conversation.',
+    line: 'Share the right update at the right time.',
+    voice: 'Less explaining from memory. More trust in the journey.',
+    accent: 'ink',
+  },
+];
+
+const pillars = [
+  {
+    name: 'Ace',
+    mark: 'A',
+    line: 'Hope for the next point, confidence for the next try, and room to begin again.',
+    tone: 'ace',
+  },
+  {
+    name: 'Netty',
+    mark: 'N',
+    line: 'Wise choices, fair play and respect for the lines that make the game work.',
+    tone: 'netty',
+  },
+  {
+    name: 'Lobs',
+    mark: 'L',
+    line: 'A longer view, a patient mind and the space to choose what matters now.',
+    tone: 'lobs',
+  },
+  {
+    name: 'Spin',
+    mark: 'S',
+    line: 'Fresh ideas, quick adjustment and the joy of trying a different angle.',
+    tone: 'spin',
+  },
+  {
+    name: 'Smash',
+    mark: 'M',
+    line: 'The courage to commit, step forward and take the next brave action.',
+    tone: 'smash',
+  },
+];
+
+function LineIcon({ type }) {
+  const common = {
+    viewBox: '0 0 48 48',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: '2.5',
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    'aria-hidden': true,
+  };
+
+  if (type === 'calendar') {
+    return <svg {...common}><rect x="7" y="10" width="34" height="31" rx="5" /><path d="M15 7v7M33 7v7M7 20h34M15 27h6M15 34h12" /></svg>;
+  }
+  if (type === 'note') {
+    return <svg {...common}><path d="M12 7h19l7 7v27H12a4 4 0 0 1-4-4V11a4 4 0 0 1 4-4Z" /><path d="M31 7v9h9M15 25h16M15 32h11" /></svg>;
+  }
+  if (type === 'path') {
+    return <svg {...common}><circle cx="12" cy="35" r="4" /><circle cx="36" cy="12" r="4" /><path d="M15 33c4-1 4-11 10-11s5-7 8-8M22 11h6M22 18h5" /></svg>;
+  }
+  return <svg {...common}><circle cx="24" cy="24" r="17" /><path d="M24 14v11l7 4" /><path d="M15 8 11 5M33 8l4-3" /></svg>;
+}
+
+function CourtToonPlaceholder({ name, mark, tone, className = '', label }) {
+  return (
+    <div
+      className={`courttoon-placeholder courttoon-${tone} ${className}`}
+      role="img"
+      aria-label={label || `${name} CourtToon artwork placeholder — replace with approved ${name} artwork`}
+    >
+      <span className="courttoon-sun" aria-hidden="true" />
+      <span className="courttoon-court courttoon-court-one" aria-hidden="true" />
+      <span className="courttoon-court courttoon-court-two" aria-hidden="true" />
+      <span className="courttoon-mark" aria-hidden="true">{mark}</span>
+      <span className="courttoon-name" aria-hidden="true">{name}</span>
+    </div>
+  );
+}
+
+function Reveal({ children, className = '', delay = 0 }) {
+  return <div className={`reveal ${className}`} style={{ '--reveal-delay': `${delay}ms` }}>{children}</div>;
+}
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
-  const handleLeadCapture = (e) => {
-    e.preventDefault();
+  const handleLeadCapture = (event) => {
+    event.preventDefault();
     navigate('/archetype-assessment', { state: { email } });
   };
 
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 16);
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    const items = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('reveal-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12 }
+    );
+
+    items.forEach((item) => observer.observe(item));
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      observer.disconnect();
+    };
+  }, []);
+
+  const closeMenu = () => setMenuOpen(false);
+
   return (
-    <div className="min-h-screen bg-white font-sans text-gray-900">
-      {/* Navigation */}
-      <nav className="flex items-center justify-between px-6 py-4 md:px-12 border-b border-gray-100">
-        <div className="flex items-center gap-2">
-          <span className="text-xl font-bold text-[--primary-green]">CG Tennis OS™</span>
-        </div>
-        <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
-          <a href="#features" className="hover:text-[--primary-green] transition-colors">System</a>
-          <a href="#philosophy" className="hover:text-[--primary-green] transition-colors">Philosophy</a>
-          <Link to="/pricing" className="hover:text-[--primary-green] transition-colors">Pricing</Link>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link to="/login" className="text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors">
-            Login
+    <div className="landing-page min-h-screen overflow-x-hidden bg-[#fbf8f1] text-[#20251f]">
+      <header className={`site-header ${isScrolled ? 'site-header-scrolled' : ''}`}>
+        <nav className="site-nav" aria-label="Primary navigation">
+          <Link to="/" className="brand" onClick={closeMenu} aria-label="CG Tennis OS home">
+            <span className="brand-ball" aria-hidden="true"><span /></span>
+            <span>CG Tennis OS<sup>™</sup></span>
           </Link>
-          <button onClick={() => navigate('/archetype-assessment')} className="rounded-full bg-[--primary-green] px-6 py-2 text-sm font-bold text-white hover:bg-[#1a7a4a] transition-colors">
-            Get Started
-          </button>
-        </div>
-      </nav>
 
-      {/* Hero Section */}
-      <section className="px-6 pt-16 pb-24 md:px-12 md:pt-24 max-w-7xl mx-auto">
-        <div className="text-center mb-16 max-w-4xl mx-auto">
-          <h1 className="text-4xl md:text-7xl font-extrabold leading-[1.1] mb-8 tracking-tight">
-            Are you a high-performing coach? <br/>
-            <span className="text-[--primary-green]">Build Better Players, Faster.</span>
-          </h1>
-          <p className="text-lg md:text-xl text-gray-500 mb-4 tracking-wide">
-            Coaching Intelligence, Human Wisdom.
-          </p>
-            <p className="text-xl md:text-2xl text-gray-600 mb-10 font-medium">
-            Your coaching system for session plans, player progress, and AI support, all in one place. A Coaching System for coaches who want to grow.
-          </p>
-          
-          <form onSubmit={handleLeadCapture} className="flex flex-col sm:flex-row gap-3 max-w-xl mx-auto mb-8">
-            <input 
-              id="early-access-email"
-              name="email"
-              type="email" 
-              autoComplete="email"
-              placeholder="Enter your coaching email" 
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="flex-1 px-6 py-4 rounded-2xl border border-gray-200 text-lg focus:outline-none focus:ring-2 focus:ring-[--primary-green] shadow-sm"
-            />
-            <button type="submit" className="bg-black text-white px-8 py-4 rounded-2xl text-lg font-bold hover:bg-gray-800 transition-all shadow-xl">
-              Get Early Access
+          <div className="desktop-nav">
+            <a href="#how-it-helps">How it helps</a>
+            <a href="#five-pillars">Five Pillars</a>
+            <Link to="/pricing">Pricing</Link>
+          </div>
+
+          <div className="nav-actions">
+            <Link to="/login" className="login-link">Login</Link>
+            <button type="button" onClick={() => navigate('/archetype-assessment')} className="nav-cta">
+              Start here <span aria-hidden="true">→</span>
             </button>
-          </form>
-          <div className="mb-12">
-            <Link to="/pricing" className="text-[--primary-green] font-bold border-b-2 border-[--primary-green] pb-1 hover:text-[#1a7a4a] transition-colors">
-              View Pricing & Plans →
-            </Link>
+            <button
+              type="button"
+              className="menu-toggle"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-label={menuOpen ? 'Close navigation' : 'Open navigation'}
+              aria-expanded={menuOpen}
+            >
+              <span /><span />
+            </button>
           </div>
-          
-          <div className="flex items-center justify-center gap-8 text-xs font-bold text-gray-400 uppercase tracking-widest">
-            <span>✓ Voice-to-Report</span>
-            <span>✓ Retention AI</span>
-            <span>✓ Identity Builder</span>
-          </div>
+        </nav>
+
+        <div className={`mobile-nav ${menuOpen ? 'mobile-nav-open' : ''}`}>
+          <a href="#how-it-helps" onClick={closeMenu}>How it helps</a>
+          <a href="#five-pillars" onClick={closeMenu}>Five Pillars</a>
+          <Link to="/pricing" onClick={closeMenu}>Pricing</Link>
+          <Link to="/login" onClick={closeMenu}>Login</Link>
         </div>
+      </header>
 
-        {/* Product UI Hero - Player Retention Dashboard Mockup */}
-        <div className="relative max-w-6xl mx-auto">
-          <div className="rounded-3xl bg-gray-900 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.3)] border border-gray-800 overflow-hidden">
-            {/* Window Header */}
-            <div className="bg-gray-800/50 px-6 py-3 flex items-center justify-between border-b border-gray-700">
-              <div className="flex gap-2">
-                <div className="h-3 w-3 rounded-full bg-red-500/50"></div>
-                <div className="h-3 w-3 rounded-full bg-amber-500/50"></div>
-                <div className="h-3 w-3 rounded-full bg-green-500/50"></div>
-              </div>
-              <div className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">CG TENNIS OS — COACHING INSIGHT</div>
-              <div className="w-12"></div>
-            </div>
-            
-            {/* Dashboard Content Mockup */}
-            <div className="p-8 md:p-12 bg-gray-900 grid md:grid-cols-4 gap-8">
-              {/* Sidebar Mockup */}
-              <div className="hidden md:block space-y-6 border-r border-gray-800 pr-8">
-                <div className="h-4 w-24 bg-gray-800 rounded"></div>
-                <div className="space-y-3">
-                  <div className="h-8 w-full bg-[--primary-green]/10 border border-[--primary-green]/20 rounded-lg"></div>
-                  <div className="h-8 w-full bg-gray-800/50 rounded-lg"></div>
-                  <div className="h-8 w-full bg-gray-800/50 rounded-lg"></div>
-                  <div className="h-8 w-full bg-gray-800/50 rounded-lg"></div>
+      <main>
+        <section className="hero-section">
+          <div className="hero-orbit hero-orbit-one" aria-hidden="true" />
+          <div className="hero-orbit hero-orbit-two" aria-hidden="true" />
+          <div className="hero-grid" aria-hidden="true" />
+
+          <div className="hero-content page-shell">
+            <Reveal className="hero-copy">
+              <p className="eyebrow"><span /> A steadier way to coach</p>
+              <h1>Are you a high-performing coach? <em>Build better players, faster.</em></h1>
+              <p className="hero-strapline">Coaching Intelligence. Human Wisdom.</p>
+              <p className="hero-intro">One home for the coaching work that matters: the people, the plans and the small details that make a big difference.</p>
+
+              <form onSubmit={handleLeadCapture} className="lead-form">
+                <label className="sr-only" htmlFor="early-access-email">Your coaching email</label>
+                <input
+                  id="early-access-email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="Your coaching email"
+                  required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+                <button type="submit">Start your trial <span aria-hidden="true">↗</span></button>
+              </form>
+              <p className="form-note">A clear first step, with no fuss.</p>
+              <Link to="/pricing" className="pricing-link">View pricing and plans <span aria-hidden="true">→</span></Link>
+            </Reveal>
+
+            <Reveal className="hero-side" delay={100}>
+              <div className="hero-netty-wrap">
+                <div className="guide-label"><span aria-hidden="true">↘</span> Your next move starts here</div>
+                <CourtToonPlaceholder
+                  name="Netty"
+                  mark="N"
+                  tone="netty"
+                  className="hero-netty"
+                  label="Netty guide illustration placeholder — replace with netty-the-guide.webp"
+                />
+                <div className="guide-card">
+                  <span className="guide-card-dot" aria-hidden="true" />
+                  <p>Make room for the coaching.</p>
+                  <span>We will hold the admin.</span>
                 </div>
               </div>
+            </Reveal>
+          </div>
 
-              {/* Main Content Mockup */}
-              <div className="md:col-span-3 space-y-8">
-                {/* Header */}
-                <div className="flex items-end justify-between">
-                  <div>
-                    <h3 className="text-2xl font-bold text-white mb-1">Player Retention Analytics</h3>
-                    <p className="text-sm text-gray-500">Real-time coaching insight</p>
-                  </div>
-                  <div className="h-10 w-32 bg-[--primary-green] rounded-xl flex items-center justify-center text-xs font-bold text-white">GENERATE REPORT</div>
-                </div>
+          <div className="hero-bottom page-shell" aria-label="CG Tennis OS helps with your calendar, player notes and communication">
+            <span>Calendar</span><i aria-hidden="true" /><span>Player story</span><i aria-hidden="true" /><span>Clear updates</span>
+          </div>
+        </section>
 
-                {/* KPI Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-2xl bg-gray-800/30 border border-gray-700">
-                    <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">Active Players</p>
-                    <p className="text-3xl font-bold text-white">42</p>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-gray-800/30 border border-gray-700">
-                    <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">Avg Retention</p>
-                    <p className="text-3xl font-bold text-[--primary-green]">94%</p>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20">
-                    <p className="text-[10px] text-red-400 font-bold uppercase mb-2">Critical Alerts</p>
-                    <p className="text-3xl font-bold text-red-500">2</p>
-                  </div>
-                </div>
+        <section className="identity-section" aria-labelledby="identity-title">
+          <div className="page-shell">
+            <Reveal className="section-heading section-heading-wide">
+              <p className="eyebrow eyebrow-dark"><span /> A familiar feeling</p>
+              <div>
+                <h2 id="identity-title">Is this you?</h2>
+                <p>Good coaching is personal. The admin around it does not have to be a daily scramble.</p>
+              </div>
+            </Reveal>
 
-                {/* The "Money" Alert */}
-                <div className="p-6 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-amber-500 flex items-center justify-center text-white text-xl">⚠️</div>
-                    <div>
-                      <p className="text-sm font-bold text-amber-500">RETENTION ALERT: Alex M.</p>
-                      <p className="text-xs text-gray-400">Dropout risk critical: No session logged in 14 days. Enjoyment score trend: -3.2</p>
+            <div className="identity-grid">
+              {identityCards.map((card, index) => (
+                <Reveal key={card.number} delay={index * 70}>
+                  <article className="identity-card">
+                    <div className="identity-card-top">
+                      <span className="card-number">{card.number}</span>
+                      <span className="identity-icon"><LineIcon type={card.icon} /></span>
                     </div>
-                  </div>
-                  <div className="h-8 w-24 bg-white rounded-lg flex items-center justify-center text-[10px] font-bold text-black">INTERVENE</div>
-                </div>
+                    <h3>{card.title}</h3>
+                    <p>{card.body}</p>
+                  </article>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="five-pillars" className="pillars-section" aria-labelledby="pillars-title">
+          <div className="page-shell">
+            <Reveal className="pillars-intro">
+              <p className="eyebrow eyebrow-light"><span /> Meet the family</p>
+              <h2 id="pillars-title">More human, <em>on purpose.</em></h2>
+              <p>CourtToons turns the habits that shape tennis into stories children, parents, players and coaches can understand, enjoy and carry with them. These five friends help make each lesson feel useful on court and off.</p>
+            </Reveal>
+
+            <div className="pillars-grid">
+              {pillars.map((pillar, index) => (
+                <Reveal key={pillar.name} delay={index * 70}>
+                  <article className={`pillar-card pillar-${pillar.tone}`}>
+                    <CourtToonPlaceholder name={pillar.name} mark={pillar.mark} tone={pillar.tone} />
+                    <div className="pillar-copy">
+                      <h3>{pillar.name}</h3>
+                      <p>{pillar.line}</p>
+                    </div>
+                  </article>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="how-it-helps" className="features-section" aria-labelledby="features-title">
+          <div className="page-shell">
+            <Reveal className="features-heading">
+              <div>
+                <p className="eyebrow eyebrow-dark"><span /> For the everyday work</p>
+                <h2 id="features-title">Let the useful bits <em>stay useful.</em></h2>
               </div>
+              <p>CG Tennis OS gives the working parts of your week a place to land, so you can keep your attention where it belongs.</p>
+            </Reveal>
+
+            <div className="feature-list">
+              {featureLines.map((feature, index) => (
+                <Reveal key={feature.number} delay={index * 70}>
+                  <article className={`feature-row feature-${feature.accent}`}>
+                    <span className="feature-number">{feature.number}</span>
+                    <div className="feature-title"><span className="feature-orb" aria-hidden="true" />{feature.title}</div>
+                    <div className="feature-body">
+                      <p className="feature-line">{feature.line}</p>
+                      <p className="feature-voice">{feature.voice}</p>
+                    </div>
+                  </article>
+                </Reveal>
+              ))}
             </div>
           </div>
-          
-          {/* Decorative Elements */}
-          <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[--primary-green]/20 blur-[120px] rounded-full"></div>
-        </div>
-      </section>
+        </section>
 
-      {/* Philosophy Section */}
-      <section id="philosophy" className="py-24 bg-gray-50 px-6 md:px-12 text-center">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-gray-400 mb-12">The Philosophy</h2>
-          <blockquote className="text-2xl md:text-4xl font-bold text-gray-900 leading-tight mb-12">
-            "Stop forcing the script. <br/>
-            <span className="text-[--primary-green]">Find what's really holding them back.</span>"
-          </blockquote>
-          <p className="text-gray-600 text-lg max-w-2xl mx-auto leading-relaxed">
-            No two players arrive with the same body, beliefs, or readiness. CGTennis OS is built on the principle that great coaching begins by identifying the real problem, not accepting the surface version.
-          </p>
-        </div>
-      </section>
-
-      {/* Features Grid */}
-      <section id="features" className="py-32 px-6 md:px-12 max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row items-end justify-between mb-20 gap-8">
-          <div className="max-w-2xl">
-            <h2 className="text-3xl md:text-5xl font-extrabold mb-6">Built to Get Results.</h2>
-            <p className="text-xl text-gray-500">Built to solve the everyday challenges of coaching at scale.</p>
+        <section className="trial-section" aria-labelledby="trial-title">
+          <div className="page-shell trial-grid">
+            <Reveal>
+              <div className="trial-copy">
+                <p className="eyebrow eyebrow-dark"><span /> A good place to begin</p>
+                <h2 id="trial-title">Keep the care. <em>Lose the clutter.</em></h2>
+                <p>Take your time. Start with the part of your week that needs a little more breathing room.</p>
+                <button type="button" onClick={() => navigate('/archetype-assessment')} className="trial-button">See your next step <span aria-hidden="true">→</span></button>
+              </div>
+            </Reveal>
+            <Reveal className="ace-spot" delay={90}>
+              <div className="ace-copy-note">You have got this.</div>
+              <CourtToonPlaceholder
+                name="Ace"
+                mark="A"
+                tone="ace"
+                className="trial-ace"
+                label="Ace encouragement illustration placeholder — replace with ace-thumbs-up.webp"
+              />
+              <div className="ace-confirmation"><span aria-hidden="true">✓</span> Ready when you are</div>
+            </Reveal>
           </div>
-          <button onClick={() => navigate('/archetype-assessment')} className="text-[--primary-green] font-bold border-b-2 border-[--primary-green] pb-1 hover:text-[#1a7a4a] transition-colors">
-            View full capabilities →
-          </button>
-        </div>
-        
-        <div className="grid md:grid-cols-3 gap-12">
-          {[
-            { title: 'Voice-to-Report', desc: 'Record voice notes on court. AI generates structured reports instantly. No typing required.', icon: '🎙️' },
-            { title: 'Retention Intelligence', desc: 'Predict player dropout before it happens with behavioural pattern monitoring.', icon: '🧠' },
-            { title: 'Identity Builder', desc: 'Define your coaching archetype and unique value proposition using our proprietary framework.', icon: '🎯' },
-            { title: 'Drill Learning Engine', desc: 'Generate game-based drills that prioritise decision-making over feeding.', icon: '🎾' },
-            { title: 'Business Operating System', desc: 'Professional pricing calculators and programme templates to scale your academy.', icon: '📊' },
-            { title: 'Community Knowledge', desc: 'Access and share ideas with a global network of coaches.', icon: '🌐' }
-          ].map((f, i) => (
-            <div key={i} className="group">
-              <div className="text-3xl mb-6">{f.icon}</div>
-              <h3 className="text-xl font-bold mb-4">{f.title}</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+        </section>
 
-      {/* CTA Section */}
-      <section className="py-32 px-6 md:px-12 bg-black text-white text-center relative overflow-hidden">
-        <div className="max-w-4xl mx-auto relative z-10">
-          <h2 className="text-4xl md:text-6xl font-extrabold mb-10 leading-tight">Build on Your Own Terms.</h2>
-          <p className="text-gray-400 text-xl mb-12 max-w-2xl mx-auto">
-            Ready to find your coaching archetype and fast-track your entry into the CG Tennis OS ecosystem?
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button onClick={() => navigate('/archetype-assessment')} className="bg-[--primary-green] text-white px-10 py-5 rounded-2xl text-lg font-bold hover:bg-[#1a7a4a] transition-all transform hover:scale-105">
-              Take the Archetype Assessment
-            </button>
-            <button className="bg-white/10 backdrop-blur-md text-white px-10 py-5 rounded-2xl text-lg font-bold hover:bg-white/20 transition-all">
-              Request a Demo
-            </button>
-          </div>
-        </div>
-        {/* Abstract design elements */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[--primary-green]/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2"></div>
-      </section>
+        <section className="rhythm-break" role="img" aria-label="Full-width CourtToon scene placeholder — replace with approved CourtToon scene artwork">
+          <div className="scene-sun" aria-hidden="true" />
+          <div className="scene-hill scene-hill-one" aria-hidden="true" />
+          <div className="scene-hill scene-hill-two" aria-hidden="true" />
+          <div className="scene-court" aria-hidden="true"><span /><span /><span /></div>
+          <div className="scene-ball scene-ball-one" aria-hidden="true" />
+          <div className="scene-ball scene-ball-two" aria-hidden="true" />
+          <div className="scene-racket scene-racket-one" aria-hidden="true" />
+          <div className="scene-racket scene-racket-two" aria-hidden="true" />
+        </section>
+      </main>
 
-      {/* Footer */}
-      <footer className="py-16 px-6 md:px-12 border-t border-gray-100 bg-gray-50">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="text-xl font-bold text-gray-900">CG Tennis OS™</div>
-          <div className="flex gap-8 text-sm font-bold text-gray-400 uppercase tracking-widest">
-            <a href="#" className="hover:text-gray-900 transition-colors">Terms</a>
-            <a href="#" className="hover:text-gray-900 transition-colors">Privacy</a>
-            <a href="#" className="hover:text-gray-900 transition-colors">Contact</a>
+      <footer className="site-footer">
+        <div className="page-shell footer-content">
+          <div className="footer-brand"><span className="brand-ball" aria-hidden="true"><span /></span>CG Tennis OS<sup>™</sup></div>
+          <p>Coaching Intelligence. Human Wisdom.</p>
+          <div className="footer-links">
+            <a href="#">Terms</a>
+            <a href="#">Privacy</a>
+            <a href="#">Contact</a>
           </div>
-          <p className="text-gray-400 text-sm">© 2026 CG Tennis Academies.</p>
+          <span className="footer-copy">© 2026 CG Tennis Academies.</span>
         </div>
       </footer>
     </div>
