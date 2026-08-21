@@ -7,7 +7,6 @@ import { VoiceCapture } from '../components/VoiceCapture';
 import { useSidebar } from '../hooks/useSidebar';
 import { useToast } from '../hooks/useToast';
 import { CourtToonNudge } from '../components/CourtToonNudge';
-import { FrameworkBadge } from '../components/FrameworkBadge';
 import aceThumbsUp from '../assets/courttoons/ace-thumbs-up-crop.webp';
 import nettyGuide from '../assets/courttoons/netty-guide-crop.webp';
 
@@ -175,7 +174,6 @@ export default function SessionReflection() {
           <h1 className="text-lg font-bold text-gray-800">
             {view === 'new' ? 'Log session' : view === 'reflect' ? 'Session reflection' : 'Sessions'}
           </h1>
-          <FrameworkBadge name="Playing To Excel™" size="xs" />
           {view === 'list' && (
             <button type="button" onClick={() => setView('new')} className="ml-auto rounded-lg bg-[--primary-green] px-4 py-1.5 text-sm font-medium text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">
               + Log session
