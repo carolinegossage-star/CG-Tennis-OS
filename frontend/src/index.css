@@ -226,7 +226,8 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .hero-netty-wrap { position: absolute; right: 0; bottom: 25px; width: min(390px, 100%); }
 .guide-label { position: absolute; z-index: 2; top: 22px; right: -25px; width: 150px; color: #465341; font-family: var(--mono); font-size: 10px; line-height: 1.35; transform: rotate(8deg); }
 .guide-label span { display: block; margin-bottom: 4px; color: var(--clay); font-size: 21px; }
-.hero-netty { width: 350px; height: 385px; margin-left: 6px; transform: rotate(-4deg); box-shadow: 14px 17px 0 rgba(120,130,68,.16); }
+.courttoon-artwork { display: block; object-fit: contain; object-position: center; }
+.hero-netty { width: 350px; height: 385px; margin-left: 6px; transform: rotate(-4deg); filter: drop-shadow(14px 17px 0 rgba(120,130,68,.16)); }
 .guide-card { position: absolute; z-index: 2; bottom: 4px; left: -38px; width: 202px; padding: 16px 18px; background: #fffdf7; box-shadow: 0 12px 25px rgba(32,37,31,.12); transform: rotate(-4deg); }
 .guide-card-dot { display: block; width: 8px; height: 8px; margin-bottom: 11px; border-radius: 50%; background: var(--sun); }
 .guide-card p { margin: 0 0 4px; font-family: var(--display); font-size: 18px; font-weight: 600; letter-spacing: -.04em; }
@@ -263,7 +264,12 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .pillars-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-top: 61px; }
 .pillar-card { min-height: 355px; overflow: hidden; background: rgba(255,253,247,.93); color: var(--ink); transition: transform 220ms var(--ease-out), box-shadow 220ms var(--ease-out); }
 .pillar-card:hover { box-shadow: 0 19px 0 rgba(18,26,20,.18); transform: translateY(-10px) rotate(-1deg); }
-.pillar-card .courttoon-placeholder { width: 100%; height: 202px; border: 0; border-bottom: 1px solid rgba(32,37,31,.13); border-radius: 0; box-shadow: none; }
+.pillar-poster { display: block; width: 100%; height: 202px; padding: 8px 6px 0; border-bottom: 1px solid rgba(32,37,31,.13); object-fit: contain; object-position: center bottom; }
+.pillar-ace .pillar-poster { background: #f2d49a; }
+.pillar-netty .pillar-poster { background: #d8e3bd; }
+.pillar-lobs .pillar-poster { background: #e3d6aa; }
+.pillar-spin .pillar-poster { background: #ecd0a8; }
+.pillar-smash .pillar-poster { background: #d8c9ae; }
 .pillar-copy { padding: 20px 17px 23px; }
 .pillar-copy h3 { margin: 0 0 8px; font-family: var(--display); font-size: 28px; font-weight: 600; letter-spacing: -.05em; }
 .pillar-copy p { margin: 0; color: #546157; font-size: 12px; line-height: 1.52; }
@@ -292,7 +298,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .trial-copy > p:not(.eyebrow) { max-width: 440px; margin: 0 0 30px; color: #607064; font-size: 17px; line-height: 1.55; }
 .trial-button { padding: 15px 20px; font-size: 14px; }
 .ace-spot { position: relative; min-height: 385px; }
-.trial-ace { position: absolute; right: 35px; bottom: 3px; width: 330px; height: 348px; transform: rotate(5deg); box-shadow: 16px 18px 0 rgba(195,95,68,.16); }
+.trial-ace { position: absolute; right: 35px; bottom: 3px; width: 330px; height: 348px; transform: rotate(5deg); filter: drop-shadow(16px 18px 0 rgba(195,95,68,.16)); }
 .ace-copy-note { position: absolute; z-index: 2; top: 15px; right: 18px; color: var(--clay); font-family: var(--display); font-size: 26px; font-style: italic; transform: rotate(-6deg); }
 .ace-confirmation { position: absolute; z-index: 2; bottom: 13px; left: 0; display: inline-flex; align-items: center; gap: 9px; padding: 12px 14px; background: #fffdf7; color: #465541; box-shadow: 0 10px 23px rgba(32,37,31,.09); font-family: var(--mono); font-size: 10px; letter-spacing: .025em; transform: rotate(-4deg); }
 .ace-confirmation span { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: #77a890; color: white; font-size: 10px; }
@@ -317,6 +323,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .scene-racket::after { position: absolute; bottom: -70px; left: 26px; width: 12px; height: 78px; border-radius: 0 0 12px 12px; background: #f7f0da; content: ''; transform: rotate(-24deg); transform-origin: top; }
 .scene-racket-one { top: 14%; right: 8%; transform: rotate(18deg); }
 .scene-racket-two { bottom: -7%; left: 7%; transform: scale(.68) rotate(-22deg); }
+.scene-pending-note { position: absolute; z-index: 3; right: 24px; bottom: 19px; margin: 0; padding: 7px 10px; border: 1px dashed rgba(247,240,218,.7); background: rgba(32,43,36,.78); color: #fff6d9; font-family: var(--mono); font-size: 9px; letter-spacing: .05em; text-transform: uppercase; }
 
 .site-footer { padding: 39px 0; background: #202b24; color: #ecebdc; }
 .footer-content { display: grid; grid-template-columns: 1.15fr 1fr auto auto; gap: 29px; align-items: center; }
@@ -325,36 +332,6 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .footer-links { display: flex; gap: 19px; color: #d6decf; }
 .footer-links a { font-size: 11px; }
 .footer-copy { color: #9cab9d; font-size: 10px; white-space: nowrap; }
-
-.courttoon-placeholder {
-  position: relative;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  border: 1.5px dashed rgba(32,37,31,.3);
-  border-radius: 45% 55% 48% 52% / 52% 45% 55% 48%;
-  background: #f7ecce;
-  color: #273028;
-}
-.courttoon-placeholder::before, .courttoon-placeholder::after { position: absolute; z-index: 0; border-radius: 50%; content: ''; }
-.courttoon-placeholder::before { width: 72%; height: 72%; border: 1px solid rgba(32,37,31,.15); transform: rotate(-25deg); }
-.courttoon-placeholder::after { width: 44%; height: 44%; border: 1px solid rgba(32,37,31,.12); transform: rotate(35deg); }
-.courttoon-sun { position: absolute; top: 12%; right: 15%; width: 31px; height: 31px; border-radius: 50%; background: #efc14e; }
-.courttoon-court { position: absolute; height: 1px; background: rgba(32,37,31,.19); transform: rotate(-24deg); }
-.courttoon-court-one { bottom: 25%; left: -14%; width: 115%; }
-.courttoon-court-two { bottom: 38%; left: 2%; width: 94%; }
-.courttoon-mark { position: relative; z-index: 1; display: grid; place-items: center; width: 46%; aspect-ratio: 1; border: 4px solid currentColor; border-radius: 50% 43% 55% 45%; color: inherit; font-family: var(--display); font-size: clamp(54px,7vw,94px); font-weight: 600; line-height: 1; transform: rotate(-7deg); }
-.courttoon-name { position: absolute; z-index: 2; bottom: 11%; left: 50%; padding: 5px 9px; background: var(--ink); color: white; font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: .11em; text-transform: uppercase; transform: translateX(-50%) rotate(-3deg); }
-.courttoon-ace { background: #f2d49a; color: #a64130; }
-.courttoon-ace .courttoon-sun { background: #8a994c; }
-.courttoon-netty { background: #d8e3bd; color: #2f6f61; }
-.courttoon-netty .courttoon-sun { background: #cf6848; }
-.courttoon-lobs { background: #e3d6aa; color: #675d2a; }
-.courttoon-lobs .courttoon-sun { background: #c96548; }
-.courttoon-spin { background: #ecd0a8; color: #a94f34; }
-.courttoon-spin .courttoon-sun { background: #6e8144; }
-.courttoon-smash { background: #d8c9ae; color: #534a32; }
-.courttoon-smash .courttoon-sun { background: #d2673f; }
 
 .reveal { opacity: 0; transform: translateY(26px); transition: opacity 620ms var(--ease-out) var(--reveal-delay, 0ms), transform 620ms var(--ease-out) var(--reveal-delay, 0ms); }
 .reveal-visible { opacity: 1; transform: translateY(0); }
@@ -422,7 +399,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
   .pillars-grid .reveal:nth-child(4) { grid-column: auto; }
   .pillars-grid .reveal:last-child { grid-column: 1 / -1; }
   .pillar-card { min-height: 300px; }
-  .pillar-card .courttoon-placeholder { height: 165px; }
+  .pillar-poster { height: 165px; }
   .pillar-copy { padding: 14px 13px 18px; }
   .pillar-copy h3 { font-size: 24px; }
   .pillar-copy p { font-size: 11px; }
@@ -444,6 +421,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
   .scene-court { left: 26%; width: 54%; }
   .scene-sun { left: 10%; width: 78px; height: 78px; }
   .scene-racket-one { transform: scale(.63) rotate(18deg); transform-origin: top right; }
+  .scene-pending-note { right: 14px; bottom: 14px; font-size: 8px; }
   .footer-content { grid-template-columns: 1fr; gap: 17px; }
   .footer-content > p, .footer-copy { grid-row: auto; }
   .footer-links { order: 3; }
