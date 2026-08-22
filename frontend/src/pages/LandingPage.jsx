@@ -7,7 +7,7 @@ import nettyPoster from '../assets/courttoons/netty.svg';
 import lobsPoster from '../assets/courttoons/lobs.svg';
 import spinPoster from '../assets/courttoons/spin.svg';
 import smashPoster from '../assets/courttoons/smash.svg';
-import actionCourtScene from '../assets/courttoons/action-court-scene.png';
+import actionCourtScene from '../assets/courttoons/action-court-scene.webp';
 
 const identityCards = [
   {
