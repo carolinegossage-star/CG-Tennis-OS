@@ -9,12 +9,14 @@ import { useToast } from '../hooks/useToast';
 import { CourtToonNudge } from '../components/CourtToonNudge';
 import aceThumbsUp from '../assets/courttoons/ace-thumbs-up-crop.webp';
 import nettyGuide from '../assets/courttoons/netty-guide-crop.webp';
+import lobsThinking from '../assets/courttoons/lobs-thinking-crop.webp';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
 const NUDGE_DISMISSALS = {
   firstSession: 'cgto_nudge_first_session_ace_dismissed',
   sessionsOnboarding: 'cgto_nudge_sessions_onboarding_netty_dismissed',
+  sessionPlanning: 'cgto_nudge_session_planning_lobs_dismissed',
 };
 
 function isNudgeDismissed(key) {
@@ -64,6 +66,7 @@ export default function SessionReflection() {
   const [standbyResult, setStandbyResult] = useState(null);
   const [showFirstSessionNudge, setShowFirstSessionNudge] = useState(false);
   const [sessionsOnboardingDismissed, setSessionsOnboardingDismissed] = useState(() => isNudgeDismissed(NUDGE_DISMISSALS.sessionsOnboarding));
+  const [sessionPlanningDismissed, setSessionPlanningDismissed] = useState(() => isNudgeDismissed(NUDGE_DISMISSALS.sessionPlanning));
 
   const [newForm, setNewForm] = useState({
     player_id: '', session_type: 'individual', duration_minutes: 60,
@@ -278,6 +281,19 @@ export default function SessionReflection() {
                     rows={3} placeholder="Goals, focus areas, player state…"
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[--primary-green]"
                     aria-label="Pre-session notes" />
+                  {!sessionPlanningDismissed && !newForm.session_plan_notes.trim() && (
+                    <CourtToonNudge
+                      className="mt-3 max-w-md"
+                      characterSrc={lobsThinking}
+                      characterName="Lobs"
+                      title="A little planning"
+                      message="Worth five minutes now — saves a scramble later."
+                      onDismiss={() => {
+                        saveNudgeDismissal(NUDGE_DISMISSALS.sessionPlanning);
+                        setSessionPlanningDismissed(true);
+                      }}
+                    />
+                  )}
                 </div>
                 <button type="button" onClick={handleCreateSession} disabled={saving || !newForm.player_id}
                   className="w-full rounded-lg bg-[--primary-green] py-2 text-sm font-medium text-white disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">
