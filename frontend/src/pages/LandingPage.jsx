@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import nettyGuide from '../assets/courttoons/netty-guide-crop.webp';
+import aceThumbsUp from '../assets/courttoons/ace-thumbs-up-crop.webp';
+import acePoster from '../assets/courttoons/ace.svg';
+import nettyPoster from '../assets/courttoons/netty.svg';
+import lobsPoster from '../assets/courttoons/lobs.svg';
+import spinPoster from '../assets/courttoons/spin.svg';
+import smashPoster from '../assets/courttoons/smash.svg';
+import actionCourtScene from '../assets/courttoons/action-court-scene.webp';
 
 const identityCards = [
   {
@@ -62,33 +70,33 @@ const featureLines = [
 const pillars = [
   {
     name: 'Ace',
-    mark: 'A',
     line: 'Hope for the next point, confidence for the next try, and room to begin again.',
     tone: 'ace',
+    artwork: acePoster,
   },
   {
     name: 'Netty',
-    mark: 'N',
     line: 'Wise choices, fair play and respect for the lines that make the game work.',
     tone: 'netty',
+    artwork: nettyPoster,
   },
   {
     name: 'Lobs',
-    mark: 'L',
     line: 'A longer view, a patient mind and the space to choose what matters now.',
     tone: 'lobs',
+    artwork: lobsPoster,
   },
   {
     name: 'Spin',
-    mark: 'S',
     line: 'Fresh ideas, quick adjustment and the joy of trying a different angle.',
     tone: 'spin',
+    artwork: spinPoster,
   },
   {
     name: 'Smash',
-    mark: 'M',
     line: 'The courage to commit, step forward and take the next brave action.',
     tone: 'smash',
+    artwork: smashPoster,
   },
 ];
 
@@ -113,22 +121,6 @@ function LineIcon({ type }) {
     return <svg {...common}><circle cx="12" cy="35" r="4" /><circle cx="36" cy="12" r="4" /><path d="M15 33c4-1 4-11 10-11s5-7 8-8M22 11h6M22 18h5" /></svg>;
   }
   return <svg {...common}><circle cx="24" cy="24" r="17" /><path d="M24 14v11l7 4" /><path d="M15 8 11 5M33 8l4-3" /></svg>;
-}
-
-function CourtToonPlaceholder({ name, mark, tone, className = '', label }) {
-  return (
-    <div
-      className={`courttoon-placeholder courttoon-${tone} ${className}`}
-      role="img"
-      aria-label={label || `${name} CourtToon artwork placeholder — replace with approved ${name} artwork`}
-    >
-      <span className="courttoon-sun" aria-hidden="true" />
-      <span className="courttoon-court courttoon-court-one" aria-hidden="true" />
-      <span className="courttoon-court courttoon-court-two" aria-hidden="true" />
-      <span className="courttoon-mark" aria-hidden="true">{mark}</span>
-      <span className="courttoon-name" aria-hidden="true">{name}</span>
-    </div>
-  );
 }
 
 function Reveal({ children, className = '', delay = 0 }) {
@@ -247,12 +239,10 @@ export default function LandingPage() {
             <Reveal className="hero-side" delay={100}>
               <div className="hero-netty-wrap">
                 <div className="guide-label"><span aria-hidden="true">↘</span> Your next move starts here</div>
-                <CourtToonPlaceholder
-                  name="Netty"
-                  mark="N"
-                  tone="netty"
-                  className="hero-netty"
-                  label="Netty guide illustration placeholder — replace with netty-the-guide.webp"
+                <img
+                  src={nettyGuide}
+                  className="hero-netty courttoon-artwork"
+                  alt="Netty, the CourtToon guide, holding a rules book"
                 />
                 <div className="guide-card">
                   <span className="guide-card-dot" aria-hidden="true" />
@@ -307,7 +297,11 @@ export default function LandingPage() {
               {pillars.map((pillar, index) => (
                 <Reveal key={pillar.name} delay={index * 70}>
                   <article className={`pillar-card pillar-${pillar.tone}`}>
-                    <CourtToonPlaceholder name={pillar.name} mark={pillar.mark} tone={pillar.tone} />
+                    <img
+                      src={pillar.artwork}
+                      className="pillar-poster"
+                      alt={`${pillar.name} CourtToon pillar poster`}
+                    />
                     <div className="pillar-copy">
                       <h3>{pillar.name}</h3>
                       <p>{pillar.line}</p>
@@ -358,27 +352,22 @@ export default function LandingPage() {
             </Reveal>
             <Reveal className="ace-spot" delay={90}>
               <div className="ace-copy-note">You have got this.</div>
-              <CourtToonPlaceholder
-                name="Ace"
-                mark="A"
-                tone="ace"
-                className="trial-ace"
-                label="Ace encouragement illustration placeholder — replace with ace-thumbs-up.webp"
+              <img
+                src={aceThumbsUp}
+                className="trial-ace courttoon-artwork"
+                alt="Ace giving an encouraging thumbs up"
               />
               <div className="ace-confirmation"><span aria-hidden="true">✓</span> Ready when you are</div>
             </Reveal>
           </div>
         </section>
 
-        <section className="rhythm-break" role="img" aria-label="Full-width CourtToon scene placeholder — replace with approved CourtToon scene artwork">
-          <div className="scene-sun" aria-hidden="true" />
-          <div className="scene-hill scene-hill-one" aria-hidden="true" />
-          <div className="scene-hill scene-hill-two" aria-hidden="true" />
-          <div className="scene-court" aria-hidden="true"><span /><span /><span /></div>
-          <div className="scene-ball scene-ball-one" aria-hidden="true" />
-          <div className="scene-ball scene-ball-two" aria-hidden="true" />
-          <div className="scene-racket scene-racket-one" aria-hidden="true" />
-          <div className="scene-racket scene-racket-two" aria-hidden="true" />
+        <section className="rhythm-break" aria-label="CourtToons action scene">
+          <img
+            src={actionCourtScene}
+            className="rhythm-scene"
+            alt="CourtToons action scene with the five characters learning and playing tennis on court"
+          />
         </section>
       </main>
 
