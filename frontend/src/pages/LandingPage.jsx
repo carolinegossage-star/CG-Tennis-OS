@@ -7,6 +7,7 @@ import nettyPoster from '../assets/courttoons/netty.svg';
 import lobsPoster from '../assets/courttoons/lobs.svg';
 import spinPoster from '../assets/courttoons/spin.svg';
 import smashPoster from '../assets/courttoons/smash.svg';
+import actionCourtScene from '../assets/courttoons/action-court-scene.png';
 
 const identityCards = [
   {
@@ -361,16 +362,12 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="rhythm-break" role="img" aria-label="Standalone full-width CourtToon scene artwork pending approval">
-          <div className="scene-sun" aria-hidden="true" />
-          <div className="scene-hill scene-hill-one" aria-hidden="true" />
-          <div className="scene-hill scene-hill-two" aria-hidden="true" />
-          <div className="scene-court" aria-hidden="true"><span /><span /><span /></div>
-          <div className="scene-ball scene-ball-one" aria-hidden="true" />
-          <div className="scene-ball scene-ball-two" aria-hidden="true" />
-          <div className="scene-racket scene-racket-one" aria-hidden="true" />
-          <div className="scene-racket scene-racket-two" aria-hidden="true" />
-          <p className="scene-pending-note">Standalone illustrated scene artwork pending</p>
+        <section className="rhythm-break" aria-label="CourtToons action scene">
+          <img
+            src={actionCourtScene}
+            className="rhythm-scene"
+            alt="CourtToons action scene with the five characters learning and playing tennis on court"
+          />
         </section>
       </main>
 
