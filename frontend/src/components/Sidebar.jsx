@@ -19,7 +19,9 @@ export function Sidebar({ isOpen, onClose, activePage }) {
       <aside className={`fixed top-0 left-0 z-30 h-full w-56 bg-white border-r border-gray-200 flex flex-col transition-transform duration-200
         ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static md:flex`}>
         <div className="flex items-center gap-2 px-4 py-5 border-b border-gray-100">
-          <span className="text-lg font-bold text-[--primary-green]">CG Tennis OS™</span>
+          <Link to="/dashboard" onClick={onClose} className="rounded text-lg font-bold text-[--primary-green] focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]" aria-label="CG Tennis OS Dashboard">
+            CG Tennis OS™
+          </Link>
         </div>
         <nav className="flex-1 overflow-y-auto py-3" aria-label="Sidebar navigation">
           {NAV.map(n => (
