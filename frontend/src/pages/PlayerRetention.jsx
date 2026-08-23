@@ -119,9 +119,9 @@ export default function PlayerRetention() {
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
           <button type="button" className="md:hidden p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]" onClick={toggleSidebar} aria-label="Toggle sidebar">☰</button>
-          <h1 className="text-lg font-bold text-gray-800">Player Retention</h1>
+          <h1 className="text-lg font-bold text-gray-800">Players</h1>
           <FrameworkBadge name="Playing To Excel™" size="xs" />
-          <span className="ml-auto text-sm text-gray-400">{players.length} players</span>
+          <span className="ml-auto text-sm text-gray-400">{players.length} players · retention insights</span>
         </header>
 
         {loading && <LoadingOverlay message="Loading players…" />}
