@@ -50,7 +50,8 @@ router.get('/', authenticate, async (req, res) => {
         COALESCE(metric_stats.current_enjoyment, p.enjoyment_score) AS current_enjoyment,
         COALESCE(metric_stats.current_engagement, p.engagement_score) AS current_engagement,
         programme_info.programmes,
-        programme_info.programme_ids
+        programme_info.programme_ids,
+        package_info.current_enrolment AS current_package
       FROM players p
       LEFT JOIN LATERAL (
         SELECT
@@ -86,6 +87,25 @@ router.get('/', authenticate, async (req, res) => {
         JOIN coaching_programmes cp ON cp.id = pp.programme_id
         WHERE pp.player_id = p.id AND pp.coach_id = p.coach_id AND pp.is_active = true
       ) programme_info ON true
+      LEFT JOIN LATERAL (
+        SELECT json_build_object(
+          'id', ppe.id, 'package_id', ppe.package_id, 'package_name', ppe.package_name,
+          'programme_id', ppe.programme_id, 'programme_name', ppe.programme_name,
+          'start_date', ppe.start_date, 'renewal_date', ppe.renewal_date,
+          'duration_days', ppe.duration_days, 'price_reference', ppe.price_reference,
+          'sessions_included', ppe.sessions_included, 'status', ppe.status,
+          'computed_status', CASE
+            WHEN ppe.status IN ('renewed', 'cancelled', 'superseded') THEN ppe.status
+            WHEN ppe.renewal_date < CURRENT_DATE THEN 'expired'
+            WHEN ppe.renewal_date <= CURRENT_DATE + INTERVAL '30 days' THEN 'renewal_due'
+            ELSE ppe.status END
+        ) AS current_enrolment
+        FROM player_package_enrolments ppe
+        WHERE ppe.player_id = p.id AND ppe.coach_id = p.coach_id
+          AND ppe.status IN ('active', 'renewal_due')
+        ORDER BY ppe.renewal_date ASC, ppe.created_at DESC
+        LIMIT 1
+      ) package_info ON true
       ${where}
       ORDER BY p.name
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
@@ -144,7 +164,8 @@ router.get('/:id', authenticate, async (req, res) => {
         COALESCE(credit_history.items, '[]'::json) AS session_credits,
         COALESCE(tournament_history.items, '[]'::json) AS tournament_entries,
         programme_info.programmes,
-        programme_info.programme_ids
+        programme_info.programme_ids,
+        COALESCE(package_history.items, '[]'::json) AS package_enrolments
       FROM players p
       LEFT JOIN LATERAL (
         SELECT
@@ -210,6 +231,19 @@ router.get('/:id', authenticate, async (req, res) => {
         JOIN coaching_programmes cp ON cp.id = pp.programme_id
         WHERE pp.player_id = p.id AND pp.coach_id = p.coach_id AND pp.is_active = true
       ) programme_info ON true
+      LEFT JOIN LATERAL (
+        SELECT json_agg(enrolment_item ORDER BY enrolment_item.renewal_date DESC, enrolment_item.created_at DESC) AS items
+        FROM (
+          SELECT ppe.*,
+            CASE
+              WHEN ppe.status IN ('renewed', 'cancelled', 'superseded') THEN ppe.status
+              WHEN ppe.renewal_date < CURRENT_DATE THEN 'expired'
+              WHEN ppe.renewal_date <= CURRENT_DATE + INTERVAL '30 days' THEN 'renewal_due'
+              ELSE ppe.status END AS computed_status
+          FROM player_package_enrolments ppe
+          WHERE ppe.player_id = p.id AND ppe.coach_id = p.coach_id
+        ) enrolment_item
+      ) package_history ON true
       WHERE p.id = $1
     `, [req.params.id]);
 

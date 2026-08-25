@@ -24,6 +24,7 @@ const sessionRoutes = require('./routes/sessions');
 const programmeRoutes = require('./routes/programmes');
 const sessionCreditRoutes = require('./routes/sessionCredits');
 const incomeRecordRoutes = require('./routes/incomeRecords');
+const renewalRoutes = require('./routes/renewals');
 const {
   alertsRouter, aiRouter, businessRouter,
   communityRouter, checklistsRouter, usersRouter, adminRouter
@@ -131,6 +132,7 @@ app.use('/sessions', sessionRoutes);
 app.use('/programmes', programmeRoutes);
 app.use('/session-credits', sessionCreditRoutes);
 app.use('/income-records', incomeRecordRoutes);
+app.use('/renewals', renewalRoutes);
 app.use('/alerts', alertsRouter);
 app.use('/ai-assist', aiRouter);
 app.use('/business-metrics', businessRouter);
