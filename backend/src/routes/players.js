@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { body, query: qv, validationResult } = require('express-validator');
-const { query, cache } = require('../config/database');
+const { pool, query, cache } = require('../config/database');
 const { authenticate, authorize, audit } = require('../middleware/auth');
 const retentionService = require('../services/retentionService');
 const logger = require('../utils/logger');
 const { getAccessContext } = require('../services/accessContext');
+const { syncPlayerProgrammes } = require('../services/programmeAssignmentService');
 
 const ACTIVE_PLAYER_CAPS = { solo: 35, professional: 100 };
 const LEGACY_PLAN_ALIASES = { starter: 'solo' };
@@ -41,7 +42,9 @@ router.get('/', authenticate, async (req, res) => {
         COALESCE(session_stats.sessions_this_month, 0)::int AS sessions_this_month,
         session_stats.last_session_date,
         COALESCE(metric_stats.current_enjoyment, p.enjoyment_score) AS current_enjoyment,
-        COALESCE(metric_stats.current_engagement, p.engagement_score) AS current_engagement
+        COALESCE(metric_stats.current_engagement, p.engagement_score) AS current_engagement,
+        programme_info.programmes,
+        programme_info.programme_ids
       FROM players p
       LEFT JOIN LATERAL (
         SELECT
@@ -62,6 +65,14 @@ router.get('/', authenticate, async (req, res) => {
         WHERE rm.player_id = p.id
           AND rm.recorded_date > NOW() - INTERVAL '30 days'
       ) metric_stats ON true
+      LEFT JOIN LATERAL (
+        SELECT
+          COALESCE(json_agg(json_build_object('id', cp.id, 'name', cp.name, 'programme_type', cp.programme_type) ORDER BY cp.name), '[]'::json) AS programmes,
+          COALESCE(array_agg(cp.id ORDER BY cp.name), ARRAY[]::uuid[]) AS programme_ids
+        FROM player_programmes pp
+        JOIN coaching_programmes cp ON cp.id = pp.programme_id
+        WHERE pp.player_id = p.id AND pp.coach_id = p.coach_id AND pp.is_active = true
+      ) programme_info ON true
       ${where}
       ORDER BY p.name
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
@@ -114,7 +125,9 @@ router.get('/:id', authenticate, async (req, res) => {
         COALESCE(session_stats.sessions_this_month, 0)::int AS sessions_this_month,
         session_stats.last_session_date,
         COALESCE(retention_history.items, '[]'::json) AS retention_history,
-        COALESCE(tournament_history.items, '[]'::json) AS tournament_entries
+        COALESCE(tournament_history.items, '[]'::json) AS tournament_entries,
+        programme_info.programmes,
+        programme_info.programme_ids
       FROM players p
       LEFT JOIN LATERAL (
         SELECT
@@ -137,6 +150,14 @@ router.get('/:id', authenticate, async (req, res) => {
         FROM tournament_entries te
         WHERE te.player_id = p.id
       ) tournament_history ON true
+      LEFT JOIN LATERAL (
+        SELECT
+          COALESCE(json_agg(json_build_object('id', cp.id, 'name', cp.name, 'programme_type', cp.programme_type) ORDER BY cp.name), '[]'::json) AS programmes,
+          COALESCE(array_agg(cp.id ORDER BY cp.name), ARRAY[]::uuid[]) AS programme_ids
+        FROM player_programmes pp
+        JOIN coaching_programmes cp ON cp.id = pp.programme_id
+        WHERE pp.player_id = p.id AND pp.coach_id = p.coach_id AND pp.is_active = true
+      ) programme_info ON true
       WHERE p.id = $1
     `, [req.params.id]);
 
@@ -158,8 +179,9 @@ router.get('/:id', authenticate, async (req, res) => {
 // POST /players
 router.post('/', authenticate, authorize('coach', 'academy_director', 'super_admin'), [
   body('name').trim().notEmpty().isLength({ max: 255 }),
-  body('email').optional().isEmail().normalizeEmail(),
-  body('date_of_birth').optional().isISO8601(),
+  body('email').optional({ nullable: true, checkFalsy: true }).isEmail().normalizeEmail(),
+  body('date_of_birth').optional({ nullable: true, checkFalsy: true }).isISO8601(),
+  body('programme_ids').optional().isArray(),
 ], audit('create_player', 'players'), async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
@@ -167,17 +189,16 @@ router.post('/', authenticate, authorize('coach', 'academy_director', 'super_adm
   const {
     name, date_of_birth, gender, nationality, email, phone,
     parent_name, parent_email, parent_phone, notes,
-    ranking_current, itf_id, lta_id
+    ranking_current, itf_id, lta_id, programme_ids = []
   } = req.body;
 
+  let client;
   try {
     // Academy and administrative roles are intentionally not constrained by
     // the single-coach Solo/Professional caps. Multi-coach Academy capacity
     // remains a separate contact-sales capability.
     if (req.user.role === 'coach') {
       const access = req.user.access || getAccessContext(req.user);
-      // Admins have unlimited capacity. Comped users use only their comped
-      // tier. Ordinary users continue through the existing DB plan lookup.
       const plan = access.isAdmin || access.isComped
         ? access.effectivePlan
         : normalizedPlan((await query(
@@ -210,7 +231,9 @@ router.post('/', authenticate, authorize('coach', 'academy_director', 'super_adm
       }
     }
 
-    const result = await query(`
+    client = await pool.connect();
+    await client.query('BEGIN');
+    const result = await client.query(`
       INSERT INTO players (
         coach_id, name, date_of_birth, gender, nationality, email, phone,
         parent_name, parent_email, parent_phone, notes, ranking_current, itf_id, lta_id
@@ -219,29 +242,43 @@ router.post('/', authenticate, authorize('coach', 'academy_director', 'super_adm
     `, [
       req.user.id, name, date_of_birth || null, gender || null, nationality || null,
       email || null, phone || null, parent_name || null, parent_email || null,
-      parent_phone || null, notes || null, ranking_current || null, itf_id || null, lta_id || null
+      parent_phone || null, notes || null, ranking_current || null, itf_id || null, lta_id || null,
     ]);
 
-    // Update coach player count
-    await query(
-      'UPDATE coach_profiles SET player_count = player_count + 1 WHERE user_id = $1',
-      [req.user.id]
-    );
+    const programmeIds = await syncPlayerProgrammes({
+      playerId: result.rows[0].id,
+      coachId: req.user.id,
+      programmeIds: programme_ids,
+      db: client,
+    });
+    await client.query('UPDATE coach_profiles SET player_count = player_count + 1 WHERE user_id = $1', [req.user.id]);
+    await client.query('COMMIT');
 
     logger.info('Player created', { coachId: req.user.id, playerId: result.rows[0].id });
-    res.status(201).json(result.rows[0]);
+    res.status(201).json({ ...result.rows[0], programme_ids: programmeIds });
   } catch (err) {
+    if (client) await client.query('ROLLBACK');
     logger.error('Create player error', { error: err.message });
-    res.status(500).json({ error: 'Failed to create player' });
+    res.status(err.code === 'INVALID_PROGRAMME_ASSIGNMENTS' ? 400 : 500).json({ error: err.message || 'Failed to create player' });
+  } finally {
+    client?.release();
   }
 });
 
 // PUT /players/:id
 router.put('/:id', authenticate, async (req, res) => {
+  const hasProgrammeAssignments = Object.prototype.hasOwnProperty.call(req.body, 'programme_ids');
+  let client;
   try {
-    const existing = await query('SELECT coach_id FROM players WHERE id = $1', [req.params.id]);
-    if (!existing.rows.length) return res.status(404).json({ error: 'Player not found' });
+    client = await pool.connect();
+    await client.query('BEGIN');
+    const existing = await client.query('SELECT * FROM players WHERE id = $1', [req.params.id]);
+    if (!existing.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Player not found' });
+    }
     if (req.user.role === 'coach' && existing.rows[0].coach_id !== req.user.id) {
+      await client.query('ROLLBACK');
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -250,9 +287,8 @@ router.put('/:id', authenticate, async (req, res) => {
       'parent_name', 'parent_email', 'parent_phone', 'ranking_current', 'ranking_trajectory',
       'milestones', 'enjoyment_score', 'engagement_score', 'burnout_risk_level',
       'dropout_risk_level', 'confidence_score', 'resilience_score', 'communication_score',
-      'leadership_score', 'notes', 'is_active', 'itf_id', 'lta_id'
+      'leadership_score', 'notes', 'is_active', 'itf_id', 'lta_id',
     ];
-
     const updates = [];
     const values = [];
     let paramIdx = 1;
@@ -261,23 +297,43 @@ router.put('/:id', authenticate, async (req, res) => {
       if (req.body[field] !== undefined) {
         updates.push(`${field} = $${paramIdx}`);
         values.push(req.body[field]);
-        paramIdx++;
+        paramIdx += 1;
       }
     }
 
-    if (!updates.length) return res.status(400).json({ error: 'No valid fields to update' });
+    if (!updates.length && !hasProgrammeAssignments) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
 
-    values.push(req.params.id);
-    const result = await query(
-      `UPDATE players SET ${updates.join(', ')} WHERE id = $${paramIdx} RETURNING *`,
-      values
-    );
+    let player = existing.rows[0];
+    if (updates.length) {
+      values.push(req.params.id);
+      const result = await client.query(
+        `UPDATE players SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${paramIdx} RETURNING *`,
+        values,
+      );
+      player = result.rows[0];
+    }
 
+    let programmeIds;
+    if (hasProgrammeAssignments) {
+      programmeIds = await syncPlayerProgrammes({
+        playerId: req.params.id,
+        coachId: existing.rows[0].coach_id,
+        programmeIds: req.body.programme_ids,
+        db: client,
+      });
+    }
+    await client.query('COMMIT');
     await cache.del(`player:${req.params.id}`);
-    res.json(result.rows[0]);
+    res.json({ ...player, ...(programmeIds ? { programme_ids: programmeIds } : {}) });
   } catch (err) {
+    if (client) await client.query('ROLLBACK');
     logger.error('Update player error', { error: err.message });
-    res.status(500).json({ error: 'Failed to update player' });
+    res.status(err.code === 'INVALID_PROGRAMME_ASSIGNMENTS' ? 400 : 500).json({ error: err.message || 'Failed to update player' });
+  } finally {
+    client?.release();
   }
 });
 

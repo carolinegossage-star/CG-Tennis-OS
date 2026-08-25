@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 const NAV = [
   { key: 'dashboard',    href: '/dashboard',          icon: '⊞', label: 'Dashboard' },
   { key: 'players',      href: '/players',             icon: '👥', label: 'Players' },
+  { key: 'programmes',   href: '/programmes',          icon: '🗓', label: 'Programmes' },
   { key: 'tournaments',  href: '/tournaments',         icon: '🏆', label: 'Tournaments' },
   { key: 'sessions',     href: '/sessions/reflection', icon: '📋', label: 'Sessions' },
   { key: 'identity',     href: '/identity',            icon: '🎯', label: 'Identity' },

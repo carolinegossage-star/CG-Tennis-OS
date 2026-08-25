@@ -100,8 +100,10 @@ function RiskPill({ level }) {
   return <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${risk.className}`}>{risk.label}</span>;
 }
 
-function PlayerForm({ player, submitting, onCancel, onSubmit }) {
-  const [form, setForm] = useState(() => Object.assign({}, EMPTY_FORM, player));
+function PlayerForm({ player, programmes, submitting, onCancel, onSubmit }) {
+  const [form, setForm] = useState(() => Object.assign({}, EMPTY_FORM, player, {
+    programme_ids: player?.programme_ids ?? player?.programmes?.map(programme => programme.id) ?? [],
+  }));
 
   const update = (field, value) => setForm(current => ({ ...current, [field]: value }));
 
@@ -113,6 +115,7 @@ function PlayerForm({ player, submitting, onCancel, onSubmit }) {
     Object.keys(payload).forEach(field => {
       if (typeof payload[field] === 'string') payload[field] = payload[field].trim() || null;
     });
+    payload.programme_ids = form.programme_ids ?? [];
     onSubmit(payload);
   };
 
@@ -139,6 +142,17 @@ function PlayerForm({ player, submitting, onCancel, onSubmit }) {
           <label className={labelClass}>Player email<input id="player-email" name="email" type="email" value={form.email ?? ''} onChange={event => update('email', event.target.value)} className={inputClass} autoComplete="email" /></label>
           <label className={labelClass}>Player phone<input id="player-phone" name="phone" type="tel" value={form.phone ?? ''} onChange={event => update('phone', event.target.value)} className={inputClass} autoComplete="tel" /></label>
         </div>
+      </fieldset>
+
+      <fieldset className="mt-6 border-t border-gray-100 pt-5">
+        <legend className="text-sm font-bold text-gray-800">Coaching Programmes</legend>
+        <p className="mt-1 text-xs leading-5 text-gray-500">Select the existing Programmes this player attends. Hold Ctrl or Command to choose more than one.</p>
+        <label className={`${labelClass} mt-3`}>Assigned Programmes
+          <select id="player-programmes" name="programmeIds" multiple value={form.programme_ids ?? []} onChange={event => update('programme_ids', Array.from(event.target.selectedOptions, option => option.value))} className={`${inputClass} h-32`} aria-describedby="player-programmes-help">
+            {programmes.map(programme => <option key={programme.id} value={programme.id}>{programme.name} · {programme.programme_type}</option>)}
+          </select>
+        </label>
+        <p id="player-programmes-help" className="mt-2 text-xs text-gray-500">{programmes.length ? 'Programme assignments are structured links, not free-text notes.' : 'Create a Coaching Programme first, then return here to assign it.'}</p>
       </fieldset>
 
       <fieldset className="mt-6 border-t border-gray-100 pt-5">
@@ -172,6 +186,7 @@ export default function PlayerRetention() {
   const { sidebarOpen, toggleSidebar, closeSidebar } = useSidebar();
   const { toasts, addToast, removeToast } = useToast();
   const [players, setPlayers] = useState([]);
+  const [programmes, setProgrammes] = useState([]);
   const [stats, setStats] = useState(null);
   const [flags, setFlags] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -194,6 +209,13 @@ export default function PlayerRetention() {
     setPlayers(Array.isArray(data) ? data : (data.players ?? []));
   }, []);
 
+  const fetchProgrammes = useCallback(async () => {
+    const response = await fetch(`${API_BASE}/programmes`, { headers: authHeaders() });
+    if (!response.ok) throw new Error(`Could not load Programmes (${response.status})`);
+    const data = await response.json();
+    setProgrammes(data.programmes ?? []);
+  }, []);
+
   const fetchStats = useCallback(async () => {
     const response = await fetch(`${API_BASE}/players/analytics/retention`, { headers: authHeaders() });
     if (response.ok) setStats(await response.json());
@@ -207,13 +229,13 @@ export default function PlayerRetention() {
   const refreshDatabase = useCallback(async ({ quiet = false } = {}) => {
     if (!quiet) setLoading(true);
     try {
-      await Promise.all([fetchPlayers(), fetchStats(), fetchFlags()]);
+      await Promise.all([fetchPlayers(), fetchProgrammes(), fetchStats(), fetchFlags()]);
     } catch (error) {
       addToast({ type: 'error', message: error.message });
     } finally {
       if (!quiet) setLoading(false);
     }
-  }, [addToast, fetchFlags, fetchPlayers, fetchStats]);
+  }, [addToast, fetchFlags, fetchPlayers, fetchProgrammes, fetchStats]);
 
   useEffect(() => { refreshDatabase(); }, [refreshDatabase]);
 
@@ -444,6 +466,7 @@ export default function PlayerRetention() {
                           <div className="px-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">This month</p><p className="mt-1 text-sm font-bold text-gray-800">{player.sessions_this_month ?? 0} sessions</p></div>
                           <div className="pl-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Last session</p><p className="mt-1 text-sm font-bold text-gray-800">{player.last_session_date ? formatDate(player.last_session_date).replace(/ \d{4}$/, '') : '—'}</p></div>
                         </div>
+                        {player.programmes?.length > 0 && <p className="mt-3 truncate text-xs text-gray-500"><span className="font-semibold text-gray-700">Programmes:</span> {player.programmes.map(programme => programme.name).join(' · ')}</p>}
                       </button>
                     );
                   })}
@@ -491,6 +514,8 @@ export default function PlayerRetention() {
                 </dl>
               </section>
 
+              <section className="mt-5 border-t border-gray-100 pt-5" aria-labelledby="player-programmes-title"><h3 id="player-programmes-title" className="text-sm font-bold text-gray-900">Coaching Programmes</h3>{selectedPlayer.programmes?.length ? <div className="mt-3 flex flex-wrap gap-2">{selectedPlayer.programmes.map(programme => <span key={programme.id} className="rounded-full bg-green-50 px-3 py-1.5 text-xs font-semibold text-[--primary-green]">{programme.name} · {programme.programme_type}</span>)}</div> : <p className="mt-2 text-sm text-gray-500">No Programmes assigned. Edit the record to link this player to a coaching schedule.</p>}</section>
+
               {selectedPlayer.notes && <section className="mt-5 border-t border-gray-100 pt-5" aria-labelledby="player-notes-title"><h3 id="player-notes-title" className="text-sm font-bold text-gray-900">Coaching notes</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">{selectedPlayer.notes}</p></section>}
 
               <section className="mt-5 border-t border-gray-100 pt-5" aria-labelledby="parent-draft-title">
@@ -511,7 +536,7 @@ export default function PlayerRetention() {
         </Modal>
       )}
 
-      {formPlayer !== undefined && <Modal onClose={() => setFormPlayer(undefined)} labelledBy="player-form-title" wide><PlayerForm player={formPlayer} submitting={saving} onCancel={() => setFormPlayer(undefined)} onSubmit={savePlayer} /></Modal>}
+      {formPlayer !== undefined && <Modal onClose={() => setFormPlayer(undefined)} labelledBy="player-form-title" wide><PlayerForm player={formPlayer} programmes={programmes} submitting={saving} onCancel={() => setFormPlayer(undefined)} onSubmit={savePlayer} /></Modal>}
 
       <BottomNav activePage="players" />
       {toasts.map(toast => <Toast key={toast.id} toast={toast} onDismiss={removeToast} />)}
