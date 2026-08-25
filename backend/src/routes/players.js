@@ -44,6 +44,7 @@ router.get('/', authenticate, async (req, res) => {
       SELECT p.*,
         COALESCE(session_stats.total_sessions, 0)::int AS total_sessions,
         COALESCE(session_stats.sessions_this_month, 0)::int AS sessions_this_month,
+        COALESCE(session_stats.absent_sessions, 0)::int AS absent_sessions,
         session_stats.last_session_date,
         COALESCE(metric_stats.current_enjoyment, p.enjoyment_score) AS current_enjoyment,
         COALESCE(metric_stats.current_engagement, p.engagement_score) AS current_engagement,
@@ -52,14 +53,16 @@ router.get('/', authenticate, async (req, res) => {
       FROM players p
       LEFT JOIN LATERAL (
         SELECT
-          COUNT(*) FILTER (WHERE s.is_completed = true) AS total_sessions,
+          COUNT(*) FILTER (WHERE sp.participation_status = 'attended') AS total_sessions,
           COUNT(*) FILTER (
-            WHERE s.is_completed = true
+            WHERE sp.participation_status = 'attended'
               AND s.session_date >= date_trunc('month', CURRENT_DATE)
           ) AS sessions_this_month,
-          MAX(s.session_date) FILTER (WHERE s.is_completed = true) AS last_session_date
-        FROM sessions s
-        WHERE s.player_id = p.id
+          COUNT(*) FILTER (WHERE sp.participation_status = 'absent') AS absent_sessions,
+          MAX(s.session_date) FILTER (WHERE sp.participation_status = 'attended') AS last_session_date
+        FROM session_participants sp
+        JOIN sessions s ON s.id = sp.session_id
+        WHERE sp.player_id = p.id
       ) session_stats ON true
       LEFT JOIN LATERAL (
         SELECT
@@ -127,28 +130,55 @@ router.get('/:id', authenticate, async (req, res) => {
       SELECT p.*,
         COALESCE(session_stats.total_sessions, 0)::int AS total_sessions,
         COALESCE(session_stats.sessions_this_month, 0)::int AS sessions_this_month,
+        COALESCE(session_stats.absent_sessions, 0)::int AS absent_sessions,
         session_stats.last_session_date,
         COALESCE(retention_history.items, '[]'::json) AS retention_history,
+        COALESCE(session_history.items, '[]'::json) AS session_history,
         COALESCE(tournament_history.items, '[]'::json) AS tournament_entries,
         programme_info.programmes,
         programme_info.programme_ids
       FROM players p
       LEFT JOIN LATERAL (
         SELECT
-          COUNT(*) FILTER (WHERE s.is_completed = true) AS total_sessions,
+          COUNT(*) FILTER (WHERE sp.participation_status = 'attended') AS total_sessions,
           COUNT(*) FILTER (
-            WHERE s.is_completed = true
+            WHERE sp.participation_status = 'attended'
               AND s.session_date >= date_trunc('month', CURRENT_DATE)
           ) AS sessions_this_month,
-          MAX(s.session_date) FILTER (WHERE s.is_completed = true) AS last_session_date
-        FROM sessions s
-        WHERE s.player_id = p.id
+          COUNT(*) FILTER (WHERE sp.participation_status = 'absent') AS absent_sessions,
+          MAX(s.session_date) FILTER (WHERE sp.participation_status = 'attended') AS last_session_date
+        FROM session_participants sp
+        JOIN sessions s ON s.id = sp.session_id
+        WHERE sp.player_id = p.id
       ) session_stats ON true
       LEFT JOIN LATERAL (
         SELECT json_agg(rm ORDER BY rm.recorded_date DESC) AS items
         FROM retention_metrics rm
         WHERE rm.player_id = p.id
       ) retention_history ON true
+      LEFT JOIN LATERAL (
+        SELECT json_agg(history_item ORDER BY history_item.session_date DESC) AS items
+        FROM (
+          SELECT
+            s.id,
+            s.session_date,
+            s.start_time,
+            s.duration_minutes,
+            s.is_completed,
+            s.reflection_text,
+            s.session_plan->>'notes' AS session_note,
+            sp.participation_status,
+            sp.attendance_note,
+            cp.name AS programme_name,
+            cp.programme_type
+          FROM session_participants sp
+          JOIN sessions s ON s.id = sp.session_id
+          LEFT JOIN coaching_programmes cp ON cp.id = s.programme_id
+          WHERE sp.player_id = p.id
+          ORDER BY s.session_date DESC, s.start_time DESC
+          LIMIT 20
+        ) history_item
+      ) session_history ON true
       LEFT JOIN LATERAL (
         SELECT json_agg(te) AS items
         FROM tournament_entries te
