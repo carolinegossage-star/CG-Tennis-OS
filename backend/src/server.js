@@ -22,6 +22,7 @@ const playerRoutes = require('./routes/players');
 const tournamentRoutes = require('./routes/tournaments');
 const sessionRoutes = require('./routes/sessions');
 const programmeRoutes = require('./routes/programmes');
+const sessionCreditRoutes = require('./routes/sessionCredits');
 const {
   alertsRouter, aiRouter, businessRouter,
   communityRouter, checklistsRouter, usersRouter, adminRouter
@@ -127,6 +128,7 @@ app.use('/tournament-draws', tournamentDrawsRoutes);
 app.use('/tournament-matches', tournamentMatchesRoutes);
 app.use('/sessions', sessionRoutes);
 app.use('/programmes', programmeRoutes);
+app.use('/session-credits', sessionCreditRoutes);
 app.use('/alerts', alertsRouter);
 app.use('/ai-assist', aiRouter);
 app.use('/business-metrics', businessRouter);

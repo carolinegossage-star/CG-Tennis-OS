@@ -46,6 +46,7 @@ router.get('/', authenticate, async (req, res) => {
         COALESCE(session_stats.sessions_this_month, 0)::int AS sessions_this_month,
         COALESCE(session_stats.absent_sessions, 0)::int AS absent_sessions,
         session_stats.last_session_date,
+        COALESCE(credit_stats.open_credit_minutes, 0)::int AS open_credit_minutes,
         COALESCE(metric_stats.current_enjoyment, p.enjoyment_score) AS current_enjoyment,
         COALESCE(metric_stats.current_engagement, p.engagement_score) AS current_engagement,
         programme_info.programmes,
@@ -64,6 +65,11 @@ router.get('/', authenticate, async (req, res) => {
         JOIN sessions s ON s.id = sp.session_id
         WHERE sp.player_id = p.id
       ) session_stats ON true
+      LEFT JOIN LATERAL (
+        SELECT COALESCE(SUM(sc.credit_minutes) FILTER (WHERE sc.is_resolved = false), 0) AS open_credit_minutes
+        FROM session_credits sc
+        WHERE sc.player_id = p.id AND sc.coach_id = p.coach_id
+      ) credit_stats ON true
       LEFT JOIN LATERAL (
         SELECT
           ROUND(AVG(rm.enjoyment_score)::numeric, 1) AS current_enjoyment,
@@ -132,8 +138,10 @@ router.get('/:id', authenticate, async (req, res) => {
         COALESCE(session_stats.sessions_this_month, 0)::int AS sessions_this_month,
         COALESCE(session_stats.absent_sessions, 0)::int AS absent_sessions,
         session_stats.last_session_date,
+        COALESCE(credit_stats.open_credit_minutes, 0)::int AS open_credit_minutes,
         COALESCE(retention_history.items, '[]'::json) AS retention_history,
         COALESCE(session_history.items, '[]'::json) AS session_history,
+        COALESCE(credit_history.items, '[]'::json) AS session_credits,
         COALESCE(tournament_history.items, '[]'::json) AS tournament_entries,
         programme_info.programmes,
         programme_info.programme_ids
@@ -151,6 +159,11 @@ router.get('/:id', authenticate, async (req, res) => {
         JOIN sessions s ON s.id = sp.session_id
         WHERE sp.player_id = p.id
       ) session_stats ON true
+      LEFT JOIN LATERAL (
+        SELECT COALESCE(SUM(sc.credit_minutes) FILTER (WHERE sc.is_resolved = false), 0) AS open_credit_minutes
+        FROM session_credits sc
+        WHERE sc.player_id = p.id AND sc.coach_id = p.coach_id
+      ) credit_stats ON true
       LEFT JOIN LATERAL (
         SELECT json_agg(rm ORDER BY rm.recorded_date DESC) AS items
         FROM retention_metrics rm
@@ -179,6 +192,11 @@ router.get('/:id', authenticate, async (req, res) => {
           LIMIT 20
         ) history_item
       ) session_history ON true
+      LEFT JOIN LATERAL (
+        SELECT json_agg(sc ORDER BY sc.is_resolved ASC, sc.credit_date DESC, sc.created_at DESC) AS items
+        FROM session_credits sc
+        WHERE sc.player_id = p.id AND sc.coach_id = p.coach_id
+      ) credit_history ON true
       LEFT JOIN LATERAL (
         SELECT json_agg(te) AS items
         FROM tournament_entries te
