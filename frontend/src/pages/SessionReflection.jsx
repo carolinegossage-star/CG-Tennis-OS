@@ -60,6 +60,7 @@ export default function SessionReflection() {
   const [sessions, setSessions]         = useState([]);
   const [loading, setLoading]           = useState(true);
   const [players, setPlayers]           = useState([]);
+  const [programmes, setProgrammes]     = useState([]);
   const [view, setView]                 = useState('list');
   const [selectedSession, setSelected]  = useState(null);
   const [saving, setSaving]             = useState(false);
@@ -69,7 +70,7 @@ export default function SessionReflection() {
   const [sessionPlanningDismissed, setSessionPlanningDismissed] = useState(() => isNudgeDismissed(NUDGE_DISMISSALS.sessionPlanning));
 
   const [newForm, setNewForm] = useState({
-    player_id: '', session_type: 'individual', duration_minutes: 60,
+    player_id: '', programme_id: '', session_type: 'individual', duration_minutes: 60,
     session_date: new Date().toISOString().slice(0, 10), session_plan_notes: '',
   });
 
@@ -116,7 +117,16 @@ export default function SessionReflection() {
     } catch {}
   }, []);
 
-  useEffect(() => { fetchSessions(); fetchPlayers(); }, [fetchSessions, fetchPlayers]);
+  const fetchProgrammes = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/programmes`, { headers: authHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      setProgrammes(data.programmes ?? []);
+    } catch {}
+  }, []);
+
+  useEffect(() => { fetchSessions(); fetchPlayers(); fetchProgrammes(); }, [fetchSessions, fetchPlayers, fetchProgrammes]);
 
   const handleCreateSession = async () => {
     const isFirstLoggedSession = sessions.length === 0;
@@ -126,9 +136,13 @@ export default function SessionReflection() {
         method: 'POST', headers: authHeaders(true),
         body: JSON.stringify({
           player_id: newForm.player_id,
+          programme_id: newForm.programme_id || null,
           session_date: newForm.session_date,
           duration_minutes: newForm.duration_minutes,
-          session_plan: { session_type: newForm.session_type, notes: newForm.session_plan_notes || '' },
+          // The Programme is authoritative when selected. session_type remains
+          // as a compatibility fallback for historical and ad-hoc sessions.
+          is_group_session: selectedProgramme ? selectedProgramme.programme_type !== 'individual' : ['group', 'squad'].includes(newForm.session_type),
+          session_plan: { session_type: selectedProgramme?.programme_type ?? newForm.session_type, notes: newForm.session_plan_notes || '' },
         }),
       });
       if (!res.ok) throw new Error(`${res.status}`);
@@ -167,6 +181,9 @@ export default function SessionReflection() {
     setReflForm({ reflection_text: session.reflection_text ?? '', trio_prediction_error: '', trio_consolidation: '', trio_emotional_anchor: '' });
     setView('reflect');
   };
+
+  const selectedProgramme = programmes.find(programme => programme.id === newForm.programme_id);
+  const sessionLabel = session => session.programme_name || SESSION_TYPES.find(type => type.value === session.session_plan?.session_type)?.label || session.session_plan?.session_type || 'Session';
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -222,7 +239,7 @@ export default function SessionReflection() {
                       <div key={s.id} className="rounded-xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
                           <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0 ${typeCls}`}>
-                            {SESSION_TYPES.find(t => t.value === s.session_plan?.session_type)?.label ?? s.session_plan?.session_type}
+                            {sessionLabel(s)}
                           </span>
                           <div className="min-w-0">
                             <p className="font-semibold text-gray-800 text-sm truncate">{s.player_name ?? '—'}</p>
@@ -243,62 +260,37 @@ export default function SessionReflection() {
 
             {view === 'new' && (
               <div className="max-w-xl space-y-4">
-                {[
-                  { label: 'Player', el: (
-                    <select id="session-player" name="playerId" value={newForm.player_id} onChange={e => setNewForm(f => ({...f, player_id: e.target.value}))}
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[--primary-green]" aria-label="Player">
-                      <option value="">— Select player —</option>
-                      {players.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
-                    </select>
-                  )},
-                  { label: 'Session type', el: (
-                    <select id="session-type" name="sessionType" value={newForm.session_type} onChange={e => setNewForm(f => ({...f, session_type: e.target.value}))}
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[--primary-green]" aria-label="Session type">
-                      {SESSION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                    </select>
-                  )},
-                ].map(f => (
-                  <div key={f.label}>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">{f.label}</label>
-                    {f.el}
-                  </div>
-                ))}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Player</label>
+                  <select id="session-player" name="playerId" value={newForm.player_id} onChange={event => setNewForm(form => ({ ...form, player_id: event.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green]" aria-label="Player">
+                    <option value="">— Select player —</option>
+                    {players.map(player => <option key={player.id} value={player.id}>{player.name}</option>)}
+                  </select>
+                </div>
+
+                <div className="rounded-xl border border-[--primary-green]/20 bg-green-50/50 p-4">
+                  <label className="block text-sm font-semibold text-gray-800">Coaching Programme</label>
+                  <p className="mt-1 text-xs leading-5 text-gray-600">Select a Programme to link this session to its recurring schedule and roster. Its type controls whether the session is treated as individual, pair or group activity.</p>
+                  <select id="session-programme" name="programmeId" value={newForm.programme_id} onChange={event => setNewForm(form => ({ ...form, programme_id: event.target.value }))}
+                    className="mt-3 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green]" aria-label="Coaching Programme">
+                    <option value="">— No Programme / ad-hoc session —</option>
+                    {programmes.map(programme => <option key={programme.id} value={programme.id}>{programme.name} · {programme.programme_type}</option>)}
+                  </select>
+                  {selectedProgramme ? <p className="mt-2 text-xs font-medium text-[--primary-green]">Linked as {selectedProgramme.programme_type} activity. The legacy session type will be retained automatically for existing reporting compatibility.</p> : <div className="mt-3 border-t border-green-100 pt-3"><label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">Ad-hoc session type</label><select id="session-type" name="sessionType" value={newForm.session_type} onChange={event => setNewForm(form => ({ ...form, session_type: event.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green]" aria-label="Ad-hoc session type">{SESSION_TYPES.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}</select><p className="mt-1 text-xs text-gray-500">Use this only for one-off activity that does not belong to a recurring Programme.</p></div>}
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Date</label>
-                    <input id="session-date" name="sessionDate" type="date" value={newForm.session_date} onChange={e => setNewForm(f => ({...f, session_date: e.target.value}))}
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green]" aria-label="Session date" />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Duration (mins)</label>
-                    <input id="session-duration" name="durationMinutes" type="number" min="15" max="240" step="15" value={newForm.duration_minutes} onChange={e => setNewForm(f => ({...f, duration_minutes: e.target.value}))}
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green]" aria-label="Duration" />
-                  </div>
+                  <div><label className="mb-1 block text-sm font-medium text-gray-700">Date</label><input id="session-date" name="sessionDate" type="date" value={newForm.session_date} onChange={event => setNewForm(form => ({ ...form, session_date: event.target.value }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green]" aria-label="Session date" /></div>
+                  <div><label className="mb-1 block text-sm font-medium text-gray-700">Duration (mins)</label><input id="session-duration" name="durationMinutes" type="number" min="15" max="240" step="15" value={newForm.duration_minutes} onChange={event => setNewForm(form => ({ ...form, duration_minutes: event.target.value }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green]" aria-label="Duration" /></div>
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Pre-session notes</label>
-                  <textarea id="session-plan-notes" name="sessionPlanNotes" value={newForm.session_plan_notes} onChange={e => setNewForm(f => ({...f, session_plan_notes: e.target.value}))}
-                    rows={3} placeholder="Goals, focus areas, player state…"
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[--primary-green]"
-                    aria-label="Pre-session notes" />
-                  {!sessionPlanningDismissed && !newForm.session_plan_notes.trim() && (
-                    <CourtToonNudge
-                      className="mt-3 max-w-md"
-                      characterSrc={lobsThinking}
-                      characterName="Lobs"
-                      title="A little planning"
-                      message="Worth five minutes now — saves a scramble later."
-                      onDismiss={() => {
-                        saveNudgeDismissal(NUDGE_DISMISSALS.sessionPlanning);
-                        setSessionPlanningDismissed(true);
-                      }}
-                    />
-                  )}
+                  <textarea id="session-plan-notes" name="sessionPlanNotes" value={newForm.session_plan_notes} onChange={event => setNewForm(form => ({ ...form, session_plan_notes: event.target.value }))} rows={3} placeholder="Goals, focus areas, player state…" className="w-full resize-y rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green]" aria-label="Pre-session notes" />
+                  {!sessionPlanningDismissed && !newForm.session_plan_notes.trim() && <CourtToonNudge className="mt-3 max-w-md" characterSrc={lobsThinking} characterName="Lobs" title="A little planning" message="Worth five minutes now — saves a scramble later." onDismiss={() => { saveNudgeDismissal(NUDGE_DISMISSALS.sessionPlanning); setSessionPlanningDismissed(true); }} />}
                 </div>
-                <button type="button" onClick={handleCreateSession} disabled={saving || !newForm.player_id}
-                  className="w-full rounded-lg bg-[--primary-green] py-2 text-sm font-medium text-white disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">
-                  {saving ? 'Saving…' : 'Log session'}
-                </button>
+                <button type="button" onClick={handleCreateSession} disabled={saving || !newForm.player_id} className="w-full rounded-lg bg-[--primary-green] py-2 text-sm font-medium text-white disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">{saving ? 'Saving…' : 'Log session'}</button>
               </div>
             )}
 
@@ -306,7 +298,7 @@ export default function SessionReflection() {
               <div className="max-w-xl space-y-5">
                 <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
                   <p className="font-semibold text-gray-800">{selectedSession.player_name ?? 'Session'}</p>
-                  <p>{SESSION_TYPES.find(t => t.value === selectedSession.session_plan?.session_type)?.label ?? selectedSession.session_plan?.session_type} · {selectedSession.duration_minutes}min · {new Date(selectedSession.session_date).toLocaleDateString('en-GB')}</p>
+                  <p>{sessionLabel(selectedSession)} · {selectedSession.duration_minutes}min · {new Date(selectedSession.session_date).toLocaleDateString('en-GB')}</p>
                 </div>
                 <VoiceCapture sessionId={selectedSession.id} playerId={selectedSession.player_id} onCaptureSaved={() => fetchSessions()} />
                 {selectedSession.is_group_session && (

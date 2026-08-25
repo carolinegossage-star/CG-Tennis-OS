@@ -5,6 +5,7 @@ import { initOfflineStorage } from './utils/offlineStorage';
 import Login from "./pages/Login";
 import Dashboard from './pages/Dashboard';
 import PlayerRetention from './pages/PlayerRetention';
+import CoachingProgrammes from './pages/CoachingProgrammes';
 import IdentityBuilder from './pages/IdentityBuilder';
 import SessionReflection from './pages/SessionReflection';
 import BusinessDashboard from './pages/BusinessDashboard';
@@ -44,6 +45,7 @@ function AppWithInit() {
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/players" element={<ProtectedRoute><PlayerRetention /></ProtectedRoute>} />
+      <Route path="/programmes" element={<ProtectedRoute><CoachingProgrammes /></ProtectedRoute>} />
       <Route path="/identity" element={<ProtectedRoute><IdentityBuilder /></ProtectedRoute>} />
       <Route path="/sessions/reflection" element={<ProtectedRoute><SessionReflection /></ProtectedRoute>} />
       <Route path="/business" element={<ProtectedRoute><BusinessDashboard /></ProtectedRoute>} />
