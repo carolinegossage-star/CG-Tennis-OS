@@ -14,52 +14,69 @@ function normalizedPlan(plan) {
   return LEGACY_PLAN_ALIASES[plan] || plan || 'solo';
 }
 
-// GET /players — list coach's players
+// GET /players — list coach's players with database-ready summary fields.
 router.get('/', authenticate, async (req, res) => {
   const { search, risk, active = 'true', limit = 50, offset = 0 } = req.query;
   const coachId = req.user.role === 'super_admin' ? req.query.coach_id : req.user.id;
+  const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100);
+  const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
 
   try {
-    let sql = `
-      SELECT p.*, 
-        COUNT(s.id) as total_sessions,
-        MAX(s.session_date) as last_session_date,
-        COALESCE(AVG(rm.enjoyment_score), p.enjoyment_score) as current_enjoyment,
-        COALESCE(AVG(rm.engagement_score), p.engagement_score) as current_engagement
-      FROM players p
-      LEFT JOIN sessions s ON s.player_id = p.id AND s.is_completed = true
-      LEFT JOIN retention_metrics rm ON rm.player_id = p.id AND rm.recorded_date > NOW() - INTERVAL '30 days'
-      WHERE p.coach_id = $1 AND p.is_active = $2
-    `;
+    const filters = ['p.coach_id = $1', 'p.is_active = $2'];
     const params = [coachId, active === 'true'];
-    let paramIdx = 3;
 
     if (search) {
-      sql += ` AND p.name ILIKE $${paramIdx}`;
+      filters.push(`p.name ILIKE $${params.length + 1}`);
       params.push(`%${search}%`);
-      paramIdx++;
     }
     if (risk) {
-      sql += ` AND (p.burnout_risk_level = $${paramIdx} OR p.dropout_risk_level = $${paramIdx})`;
+      filters.push(`(p.burnout_risk_level = $${params.length + 1} OR p.dropout_risk_level = $${params.length + 1})`);
       params.push(risk);
-      paramIdx++;
     }
 
-    sql += ` GROUP BY p.id ORDER BY p.name LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`;
-    params.push(parseInt(limit), parseInt(offset));
-
-    const result = await query(sql, params);
+    const where = `WHERE ${filters.join(' AND ')}`;
+    const result = await query(`
+      SELECT p.*,
+        COALESCE(session_stats.total_sessions, 0)::int AS total_sessions,
+        COALESCE(session_stats.sessions_this_month, 0)::int AS sessions_this_month,
+        session_stats.last_session_date,
+        COALESCE(metric_stats.current_enjoyment, p.enjoyment_score) AS current_enjoyment,
+        COALESCE(metric_stats.current_engagement, p.engagement_score) AS current_engagement
+      FROM players p
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(*) FILTER (WHERE s.is_completed = true) AS total_sessions,
+          COUNT(*) FILTER (
+            WHERE s.is_completed = true
+              AND s.session_date >= date_trunc('month', CURRENT_DATE)
+          ) AS sessions_this_month,
+          MAX(s.session_date) FILTER (WHERE s.is_completed = true) AS last_session_date
+        FROM sessions s
+        WHERE s.player_id = p.id
+      ) session_stats ON true
+      LEFT JOIN LATERAL (
+        SELECT
+          ROUND(AVG(rm.enjoyment_score)::numeric, 1) AS current_enjoyment,
+          ROUND(AVG(rm.engagement_score)::numeric, 1) AS current_engagement
+        FROM retention_metrics rm
+        WHERE rm.player_id = p.id
+          AND rm.recorded_date > NOW() - INTERVAL '30 days'
+      ) metric_stats ON true
+      ${where}
+      ORDER BY p.name
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+    `, [...params, safeLimit, safeOffset]);
 
     const countResult = await query(
-      'SELECT COUNT(*) FROM players WHERE coach_id = $1 AND is_active = $2',
-      [coachId, active === 'true']
+      `SELECT COUNT(*) FROM players p ${where}`,
+      params
     );
 
     res.json({
       players: result.rows,
-      total: parseInt(countResult.rows[0].count),
-      limit: parseInt(limit),
-      offset: parseInt(offset),
+      total: parseInt(countResult.rows[0].count, 10),
+      limit: safeLimit,
+      offset: safeOffset,
     });
   } catch (err) {
     logger.error('Get players error', { error: err.message });
@@ -67,24 +84,60 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-// GET /players/:id
+// GET /players/analytics/retention — this route must precede /:id.
+router.get('/analytics/retention', authenticate, async (req, res) => {
+  try {
+    const coachId = req.user.role === 'super_admin' ? req.query.coach_id : req.user.id;
+    const analytics = await retentionService.getCoachRetentionAnalytics(coachId);
+    res.json(analytics);
+  } catch (err) {
+    logger.error('Retention analytics error', { error: err.message });
+    res.status(500).json({ error: 'Failed to fetch retention analytics' });
+  }
+});
+
+// GET /players/:id — full player profile for the database detail panel.
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const cacheKey = `player:${req.params.id}`;
     const cached = await cache.get(cacheKey);
-    if (cached) return res.json(cached);
+    if (cached) {
+      if (req.user.role === 'coach' && cached.coach_id !== req.user.id) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      return res.json(cached);
+    }
 
     const result = await query(`
       SELECT p.*,
-        json_agg(DISTINCT rm.*) FILTER (WHERE rm.id IS NOT NULL) as retention_history,
-        json_agg(DISTINCT te.*) FILTER (WHERE te.id IS NOT NULL) as tournament_entries,
-        COUNT(DISTINCT s.id) as total_sessions
+        COALESCE(session_stats.total_sessions, 0)::int AS total_sessions,
+        COALESCE(session_stats.sessions_this_month, 0)::int AS sessions_this_month,
+        session_stats.last_session_date,
+        COALESCE(retention_history.items, '[]'::json) AS retention_history,
+        COALESCE(tournament_history.items, '[]'::json) AS tournament_entries
       FROM players p
-      LEFT JOIN retention_metrics rm ON rm.player_id = p.id ORDER BY rm.recorded_date DESC
-      LEFT JOIN tournament_entries te ON te.player_id = p.id
-      LEFT JOIN sessions s ON s.player_id = p.id AND s.is_completed = true
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(*) FILTER (WHERE s.is_completed = true) AS total_sessions,
+          COUNT(*) FILTER (
+            WHERE s.is_completed = true
+              AND s.session_date >= date_trunc('month', CURRENT_DATE)
+          ) AS sessions_this_month,
+          MAX(s.session_date) FILTER (WHERE s.is_completed = true) AS last_session_date
+        FROM sessions s
+        WHERE s.player_id = p.id
+      ) session_stats ON true
+      LEFT JOIN LATERAL (
+        SELECT json_agg(rm ORDER BY rm.recorded_date DESC) AS items
+        FROM retention_metrics rm
+        WHERE rm.player_id = p.id
+      ) retention_history ON true
+      LEFT JOIN LATERAL (
+        SELECT json_agg(te) AS items
+        FROM tournament_entries te
+        WHERE te.player_id = p.id
+      ) tournament_history ON true
       WHERE p.id = $1
-      GROUP BY p.id
     `, [req.params.id]);
 
     if (!result.rows.length) return res.status(404).json({ error: 'Player not found' });
@@ -247,18 +300,6 @@ router.get('/:id/risk-summary', authenticate, async (req, res) => {
     res.json(summary);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch risk summary' });
-  }
-});
-
-// GET /players/analytics/retention
-router.get('/analytics/retention', authenticate, async (req, res) => {
-  try {
-    const coachId = req.user.role === 'super_admin' ? req.query.coach_id : req.user.id;
-    const analytics = await retentionService.getCoachRetentionAnalytics(coachId);
-    res.json(analytics);
-  } catch (err) {
-    logger.error('Retention analytics error', { error: err.message });
-    res.status(500).json({ error: 'Failed to fetch retention analytics' });
   }
 });
 
