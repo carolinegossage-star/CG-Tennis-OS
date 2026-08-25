@@ -125,6 +125,36 @@ businessRouter.post('/', authenticate, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Failed to save metrics' }); }
 });
 
+businessRouter.get('/:coach_id/dashboard-summary', authenticate, async (req, res) => {
+  const coachId = req.params.coach_id;
+  if (req.user.role === 'coach' && coachId !== req.user.id) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  try {
+    const result = await dbQuery(`
+      SELECT
+        (SELECT COUNT(*)::int FROM players WHERE coach_id = $1 AND is_active = true) AS active_players,
+        (SELECT COUNT(*)::int FROM sessions
+          WHERE coach_id = $1
+            AND is_completed = true
+            AND session_date >= date_trunc('month', CURRENT_DATE)) AS sessions_this_month,
+        (SELECT ROUND(AVG(rm.engagement_score)::numeric, 1)
+           FROM retention_metrics rm
+          WHERE rm.coach_id = $1
+            AND rm.recorded_date >= CURRENT_DATE - INTERVAL '30 days') AS avg_retention_score,
+        (SELECT COUNT(DISTINCT p.id)::int FROM players p
+          WHERE p.coach_id = $1
+            AND p.is_active = true
+            AND (p.burnout_risk_level IN ('high', 'critical') OR p.dropout_risk_level IN ('high', 'critical'))) AS at_risk_count
+    `, [coachId]);
+    res.json({
+      ...result.rows[0],
+      monthly_revenue: null,
+      revenue_trend: null,
+    });
+  } catch (err) { res.status(500).json({ error: 'Failed to fetch dashboard summary' }); }
+});
+
 businessRouter.get('/:coach_id/retention-analytics', authenticate, async (req, res) => {
   try {
     const analytics = await retentionService.getCoachRetentionAnalytics(req.params.coach_id);

@@ -19,6 +19,7 @@ const RISK_CONFIG = {
 const EMPTY_FORM = {
   name: '',
   date_of_birth: '',
+  enrolment_date: '',
   gender: '',
   nationality: '',
   email: '',
@@ -116,6 +117,7 @@ function PlayerForm({ player, programmes, submitting, onCancel, onSubmit }) {
       if (typeof payload[field] === 'string') payload[field] = payload[field].trim() || null;
     });
     payload.programme_ids = form.programme_ids ?? [];
+    if (player) payload.is_active = form.is_active !== false;
     onSubmit(payload);
   };
 
@@ -137,10 +139,12 @@ function PlayerForm({ player, programmes, submitting, onCancel, onSubmit }) {
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className={labelClass}>Full name<span className="ml-1 text-red-500">*</span><input id="player-name" name="name" value={form.name ?? ''} onChange={event => update('name', event.target.value)} className={inputClass} required maxLength="255" autoComplete="name" /></label>
           <label className={labelClass}>Date of birth<input id="player-date-of-birth" name="date_of_birth" type="date" value={form.date_of_birth ? String(form.date_of_birth).slice(0, 10) : ''} onChange={event => update('date_of_birth', event.target.value)} className={inputClass} /></label>
+          <label className={labelClass}>Enrolment date<input id="player-enrolment-date" name="enrolment_date" type="date" value={form.enrolment_date ? String(form.enrolment_date).slice(0, 10) : ''} onChange={event => update('enrolment_date', event.target.value)} className={inputClass} /></label>
           <label className={labelClass}>Gender<select id="player-gender" name="gender" value={form.gender ?? ''} onChange={event => update('gender', event.target.value)} className={inputClass}><option value="">Not specified</option><option value="Female">Female</option><option value="Male">Male</option><option value="Non-binary">Non-binary</option><option value="Prefer not to say">Prefer not to say</option></select></label>
           <label className={labelClass}>Nationality<input id="player-nationality" name="nationality" value={form.nationality ?? ''} onChange={event => update('nationality', event.target.value)} className={inputClass} maxLength="100" autoComplete="country-name" /></label>
           <label className={labelClass}>Player email<input id="player-email" name="email" type="email" value={form.email ?? ''} onChange={event => update('email', event.target.value)} className={inputClass} autoComplete="email" /></label>
           <label className={labelClass}>Player phone<input id="player-phone" name="phone" type="tel" value={form.phone ?? ''} onChange={event => update('phone', event.target.value)} className={inputClass} autoComplete="tel" /></label>
+          {player && <label className={labelClass}>Register status<select id="player-active-status" name="is_active" value={form.is_active === false ? 'inactive' : 'active'} onChange={event => update('is_active', event.target.value === 'active')} className={inputClass}><option value="active">Active</option><option value="inactive">Inactive</option></select></label>}
         </div>
       </fieldset>
 
@@ -192,6 +196,7 @@ export default function PlayerRetention() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterRisk, setFilterRisk] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('true');
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [formPlayer, setFormPlayer] = useState(undefined);
@@ -203,11 +208,11 @@ export default function PlayerRetention() {
   const [draftLoading, setDraftLoading] = useState(false);
 
   const fetchPlayers = useCallback(async () => {
-    const response = await fetch(`${API_BASE}/players?limit=100`, { headers: authHeaders() });
+    const response = await fetch(`${API_BASE}/players?limit=100&active=${filterStatus}`, { headers: authHeaders() });
     if (!response.ok) throw new Error(`Could not load players (${response.status})`);
     const data = await response.json();
     setPlayers(Array.isArray(data) ? data : (data.players ?? []));
-  }, []);
+  }, [filterStatus]);
 
   const fetchProgrammes = useCallback(async () => {
     const response = await fetch(`${API_BASE}/programmes`, { headers: authHeaders() });
@@ -246,7 +251,8 @@ export default function PlayerRetention() {
       && (!normalizedSearch || [player.name, player.email, player.parent_name].some(value => value?.toLowerCase().includes(normalizedSearch)));
   }), [filterRisk, players, search]);
 
-  const atRiskCount = players.filter(player => ['high', 'critical'].includes(riskFor(player))).length;
+  const activePlayerCount = players.filter(player => player.is_active !== false).length;
+  const atRiskCount = players.filter(player => player.is_active !== false && ['high', 'critical'].includes(riskFor(player))).length;
   const averageEngagement = stats?.summary?.avg_engagement;
 
   const closePlayerPanel = () => {
@@ -406,7 +412,7 @@ export default function PlayerRetention() {
 
             <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Player database summary">
               {[
-                { label: 'Active players', value: players.length, className: 'text-gray-900' },
+                { label: 'Active players', value: activePlayerCount, className: 'text-gray-900' },
                 { label: 'Need a check-in', value: atRiskCount, className: atRiskCount ? 'text-orange-600' : 'text-gray-900' },
                 { label: 'Avg engagement', value: formattedScore(averageEngagement), className: 'text-[--primary-green]' },
                 { label: 'Open warnings', value: flags.length, className: flags.length ? 'text-amber-700' : 'text-gray-900' },
@@ -435,6 +441,11 @@ export default function PlayerRetention() {
                     <option value="medium">Medium risk</option>
                     <option value="low">Low risk</option>
                   </select>
+                  <select id="player-status-filter" name="playerStatus" value={filterStatus} onChange={event => setFilterStatus(event.target.value)} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-[--primary-green] focus:ring-2 focus:ring-[--primary-green]/20" aria-label="Filter by player status">
+                    <option value="true">Active players</option>
+                    <option value="false">Inactive players</option>
+                    <option value="all">All statuses</option>
+                  </select>
                 </div>
               </div>
 
@@ -457,6 +468,7 @@ export default function PlayerRetention() {
                             <div className="min-w-0">
                               <p className="truncate font-semibold text-gray-900">{player.name}</p>
                               <p className="mt-0.5 truncate text-xs text-gray-500">{[age != null ? `Age ${age}` : null, player.gender, player.nationality].filter(Boolean).join(' · ') || 'Profile details to complete'}</p>
+                              {player.is_active === false && <span className="mt-1 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600">Inactive</span>}
                             </div>
                           </div>
                           <RiskPill level={risk} />
@@ -507,7 +519,8 @@ export default function PlayerRetention() {
                   {[
                     ['Player email', selectedPlayer.email], ['Player phone', selectedPlayer.phone],
                     ['Parent / guardian', selectedPlayer.parent_name], ['Parent email', selectedPlayer.parent_email],
-                    ['Parent phone', selectedPlayer.parent_phone], ['Current ranking', selectedPlayer.ranking_current],
+                    ['Parent phone', selectedPlayer.parent_phone], ['Enrolment date', selectedPlayer.enrolment_date ? formatDate(selectedPlayer.enrolment_date) : null],
+                    ['Register status', selectedPlayer.is_active === false ? 'Inactive' : 'Active'], ['Current ranking', selectedPlayer.ranking_current],
                     ['LTA ID', selectedPlayer.lta_id], ['ITF ID', selectedPlayer.itf_id],
                   ].filter(([, value]) => value).map(([label, value]) => <div key={label}><dt className="text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</dt><dd className="mt-0.5 break-words text-gray-700">{value}</dd></div>)}
                   {!selectedPlayer.email && !selectedPlayer.phone && !selectedPlayer.parent_name && !selectedPlayer.ranking_current && <p className="text-sm text-gray-500">Contact and ranking details have not been added yet.</p>}

@@ -23,8 +23,12 @@ router.get('/', authenticate, async (req, res) => {
   const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
 
   try {
-    const filters = ['p.coach_id = $1', 'p.is_active = $2'];
-    const params = [coachId, active === 'true'];
+    const filters = ['p.coach_id = $1'];
+    const params = [coachId];
+    if (active !== 'all') {
+      filters.push(`p.is_active = $${params.length + 1}`);
+      params.push(active === 'true');
+    }
 
     if (search) {
       filters.push(`p.name ILIKE $${params.length + 1}`);
@@ -181,6 +185,7 @@ router.post('/', authenticate, authorize('coach', 'academy_director', 'super_adm
   body('name').trim().notEmpty().isLength({ max: 255 }),
   body('email').optional({ nullable: true, checkFalsy: true }).isEmail().normalizeEmail(),
   body('date_of_birth').optional({ nullable: true, checkFalsy: true }).isISO8601(),
+  body('enrolment_date').optional({ nullable: true, checkFalsy: true }).isISO8601(),
   body('programme_ids').optional().isArray(),
 ], audit('create_player', 'players'), async (req, res) => {
   const errors = validationResult(req);
@@ -189,7 +194,7 @@ router.post('/', authenticate, authorize('coach', 'academy_director', 'super_adm
   const {
     name, date_of_birth, gender, nationality, email, phone,
     parent_name, parent_email, parent_phone, notes,
-    ranking_current, itf_id, lta_id, programme_ids = []
+    ranking_current, itf_id, lta_id, enrolment_date, programme_ids = []
   } = req.body;
 
   let client;
@@ -236,13 +241,14 @@ router.post('/', authenticate, authorize('coach', 'academy_director', 'super_adm
     const result = await client.query(`
       INSERT INTO players (
         coach_id, name, date_of_birth, gender, nationality, email, phone,
-        parent_name, parent_email, parent_phone, notes, ranking_current, itf_id, lta_id
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        parent_name, parent_email, parent_phone, notes, ranking_current, itf_id, lta_id, enrolment_date
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
       RETURNING *
     `, [
       req.user.id, name, date_of_birth || null, gender || null, nationality || null,
       email || null, phone || null, parent_name || null, parent_email || null,
       parent_phone || null, notes || null, ranking_current || null, itf_id || null, lta_id || null,
+      enrolment_date || new Date().toISOString().slice(0, 10),
     ]);
 
     const programmeIds = await syncPlayerProgrammes({
@@ -287,7 +293,7 @@ router.put('/:id', authenticate, async (req, res) => {
       'parent_name', 'parent_email', 'parent_phone', 'ranking_current', 'ranking_trajectory',
       'milestones', 'enjoyment_score', 'engagement_score', 'burnout_risk_level',
       'dropout_risk_level', 'confidence_score', 'resilience_score', 'communication_score',
-      'leadership_score', 'notes', 'is_active', 'itf_id', 'lta_id',
+      'leadership_score', 'notes', 'is_active', 'itf_id', 'lta_id', 'enrolment_date',
     ];
     const updates = [];
     const values = [];

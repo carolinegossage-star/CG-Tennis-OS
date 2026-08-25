@@ -29,7 +29,7 @@ export default function BusinessDashboard() {
     setLoading(true);
     try {
       const [mRes, wRes] = await Promise.all([
-        fetch(`${API_BASE}/business-metrics/${coachId()}`,       { headers: authHeaders() }),
+        fetch(`${API_BASE}/business-metrics/${coachId()}/dashboard-summary`, { headers: authHeaders() }),
         fetch(`${API_BASE}/weather/session-risk?lat=50.7156&lng=-2.4408&label=Dorset`, { headers: authHeaders() }),
       ]);
       if (mRes.ok) setMetrics(await mRes.json());
