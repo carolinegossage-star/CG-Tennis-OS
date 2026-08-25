@@ -9,6 +9,7 @@ import CoachingProgrammes from './pages/CoachingProgrammes';
 import IdentityBuilder from './pages/IdentityBuilder';
 import SessionReflection from './pages/SessionReflection';
 import BusinessDashboard from './pages/BusinessDashboard';
+import IncomeTracking from './pages/IncomeTracking';
 import TournamentsCalendar from './pages/TournamentsCalendar';
 import TournamentLiveDashboard from './pages/TournamentLiveDashboard';
 import LandingPage from './pages/LandingPage';
@@ -49,6 +50,7 @@ function AppWithInit() {
       <Route path="/identity" element={<ProtectedRoute><IdentityBuilder /></ProtectedRoute>} />
       <Route path="/sessions/reflection" element={<ProtectedRoute><SessionReflection /></ProtectedRoute>} />
       <Route path="/business" element={<ProtectedRoute><BusinessDashboard /></ProtectedRoute>} />
+      <Route path="/income" element={<ProtectedRoute><IncomeTracking /></ProtectedRoute>} />
       <Route path="/business-metrics" element={<ProtectedRoute><BusinessDashboard /></ProtectedRoute>} />
       <Route path="/weather" element={<ProtectedRoute><BusinessDashboard /></ProtectedRoute>} />
       <Route path="/community" element={<ProtectedRoute><CommunityKnowledge /></ProtectedRoute>} />

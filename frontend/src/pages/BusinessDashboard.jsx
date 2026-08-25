@@ -62,7 +62,7 @@ export default function BusinessDashboard() {
   const weatherIsAlert  = ['rain','storm','thunder','snow','hail','sleet'].some(w => weatherSeverity.includes(w));
 
   const KPI = [
-    { label: 'Monthly revenue',  value: metrics?.monthly_revenue != null ? `£${metrics.monthly_revenue.toLocaleString()}` : '—', trend: metrics?.revenue_trend },
+    { label: 'Income received',  value: metrics?.monthly_revenue != null ? `£${metrics.monthly_revenue.toLocaleString()}` : '—', trend: metrics?.revenue_trend },
     { label: 'Active players',   value: metrics?.active_players ?? '—', trend: null },
     { label: 'Sessions (month)', value: metrics?.sessions_this_month ?? '—', trend: null },
     { label: 'Avg retention',    value: metrics?.avg_retention_score != null ? `${Math.round(metrics.avg_retention_score)}%` : '—', trend: null },
@@ -114,6 +114,11 @@ export default function BusinessDashboard() {
                 </div>
               ))}
             </div>
+
+            <section className="mb-5 grid grid-cols-1 gap-3 lg:grid-cols-2" aria-label="Income actions">
+              <a href="/income" className="group rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 p-4 text-white shadow-sm transition hover:-translate-y-0.5 hover:from-emerald-700 hover:to-teal-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-emerald-200"><p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-100">Manual bookkeeping</p><div className="mt-1 flex items-center justify-between gap-3"><div><p className="text-lg font-black">Record income received</p><p className="mt-1 text-sm text-emerald-50">Log cash, transfers and other money already received.</p></div><span className="text-2xl font-black transition group-hover:translate-x-1">→</span></div></a>
+              <a href="/income" className="rounded-xl border border-sky-200 bg-sky-50 p-4 transition hover:border-sky-300 hover:bg-sky-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-sky-100"><p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">Coach decision required</p><p className="mt-1 text-lg font-black text-sky-950">Check Session Credit context</p><p className="mt-1 text-sm text-sky-800">View time owed alongside records—informational only, never an automatic discount.</p></a>
+            </section>
 
             {metrics?.at_risk_count > 0 && (
               <div className="mb-5 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm">

@@ -8,6 +8,7 @@ const NAV = [
   { key: 'sessions',     href: '/sessions/reflection', icon: '📋', label: 'Sessions' },
   { key: 'identity',     href: '/identity',            icon: '🎯', label: 'Identity' },
   { key: 'business',     href: '/business',            icon: '📊', label: 'Business' },
+  { key: 'income',       href: '/income',              icon: '£',  label: 'Income' },
   { key: 'community',    href: '/community',           icon: '🌐', label: 'Community' },
   { key: 'checklists',   href: '/checklists',          icon: '✅', label: 'Safety' },
   { key: 'alerts',       href: '/alerts',              icon: '🔔', label: 'Alerts' },

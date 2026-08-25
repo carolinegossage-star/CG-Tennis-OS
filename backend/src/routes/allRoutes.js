@@ -145,12 +145,21 @@ businessRouter.get('/:coach_id/dashboard-summary', authenticate, async (req, res
         (SELECT COUNT(DISTINCT p.id)::int FROM players p
           WHERE p.coach_id = $1
             AND p.is_active = true
-            AND (p.burnout_risk_level IN ('high', 'critical') OR p.dropout_risk_level IN ('high', 'critical'))) AS at_risk_count
+            AND (p.burnout_risk_level IN ('high', 'critical') OR p.dropout_risk_level IN ('high', 'critical'))) AS at_risk_count,
+        COALESCE((SELECT SUM(amount) FROM income_records
+          WHERE coach_id = $1 AND received_date >= date_trunc('month', CURRENT_DATE)::date), 0)::numeric(12,2) AS monthly_revenue,
+        COALESCE((SELECT SUM(amount) FROM income_records
+          WHERE coach_id = $1
+            AND received_date >= (date_trunc('month', CURRENT_DATE) - INTERVAL '1 month')::date
+            AND received_date < date_trunc('month', CURRENT_DATE)::date), 0)::numeric(12,2) AS previous_month_revenue
     `, [coachId]);
+    const summary = result.rows[0];
+    const currentRevenue = Number(summary.monthly_revenue || 0);
+    const previousRevenue = Number(summary.previous_month_revenue || 0);
     res.json({
-      ...result.rows[0],
-      monthly_revenue: null,
-      revenue_trend: null,
+      ...summary,
+      monthly_revenue: currentRevenue,
+      revenue_trend: previousRevenue > 0 ? Math.round(((currentRevenue - previousRevenue) / previousRevenue) * 1000) / 10 : null,
     });
   } catch (err) { res.status(500).json({ error: 'Failed to fetch dashboard summary' }); }
 });
