@@ -7,6 +7,9 @@
 ### Core Coaching Tools
 
 - **Session Logging & Reflection** — Record coaching sessions with structured reflection prompts based on the TennisMindset™ framework
+- **Coaching Programmes & Participation** — Link reusable Individual, Pair and Group Programmes to Player Register entries and session attendance
+- **Session Credit** — Record make-up time owed separately from attendance, income and retention
+- **Manual Income & Renewals** — Maintain coach-controlled income records, Programme-linked packages and player renewal periods without payment automation
 - **Voice Capture** — Record voice notes on court and automatically transcribe them into structured coaching reports using OpenAI Whisper
 - **Player Retention Analytics** — Track player enjoyment, engagement, and burnout risk with predictive alerts
 - **Tournament Management** — Manage tournament events, draws, brackets, and live match scoring
@@ -177,6 +180,13 @@ Authorization: Bearer <jwt_token>
 - `POST /players` — Create new player
 - `PUT /players/:id` — Update player profile
 
+#### Programmes, Session Credit, Income and Renewals
+
+- `GET` / `POST /programmes` — Manage coach-owned structured Coaching Programmes
+- `GET` / `POST /session-credits` — View and record separate time-credit entries
+- `GET` / `POST /income-records` — View and record manual income already received
+- `GET /renewals`, `POST /renewals/packages`, `POST /renewals/enrolments` — Manage packages and player coaching periods
+
 #### Tournaments
 
 - `GET /tournaments` — List tournaments
@@ -201,6 +211,12 @@ The "Capture" feature allows coaches to record voice notes on court, which are a
 3. Speak your coaching observations
 4. Click "⏹️ Stop" when finished
 5. The system will process the audio and display the transcribed report
+
+## Coach and Operations Documentation
+
+- [Coach Guide: Packages, Renewals and Financial Tracking](./docs/coach-package-renewals-and-financial-tracking.md)
+- [End-to-End Coaching Workflow Validation](./docs/e2e-coaching-workflow-validation.md)
+- [CGTennisOS.Info Publication Guide](./docs/cgtennisos-info-publication-guide.md)
 
 ## Deployment
 
