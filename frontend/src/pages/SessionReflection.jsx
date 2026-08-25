@@ -76,6 +76,9 @@ export default function SessionReflection() {
 
   const [reflForm, setReflForm] = useState({
     reflection_text: '', participant_attendance: [],
+    session_credit_enabled: false, credit_mode: 'shortfall', credit_player_ids: [],
+    planned_duration_minutes: '', actual_duration_minutes: '', credit_minutes: '',
+    credit_reason: 'weather', credit_note: '',
     trio_prediction_error: '', trio_consolidation: '', trio_emotional_anchor: '',
   });
 
@@ -170,10 +173,26 @@ export default function SessionReflection() {
         body: JSON.stringify({ reflection_text: combined, participant_attendance: reflForm.participant_attendance }),
       });
       if (!res.ok) throw new Error(`${res.status}`);
-      addToast({ type: 'success', message: 'Reflection saved' });
+      if (reflForm.session_credit_enabled) {
+        const creditPayload = {
+          player_ids: reflForm.credit_player_ids,
+          session_id: selectedSession.id,
+          credit_reason: reflForm.credit_reason,
+          note: reflForm.credit_note,
+          ...(reflForm.credit_mode === 'shortfall'
+            ? { planned_duration_minutes: Number(reflForm.planned_duration_minutes), actual_duration_minutes: Number(reflForm.actual_duration_minutes) }
+            : { credit_minutes: Number(reflForm.credit_minutes) }),
+        };
+        const creditResponse = await fetch(`${API_BASE}/session-credits`, {
+          method: 'POST', headers: authHeaders(true), body: JSON.stringify(creditPayload),
+        });
+        const creditResult = await creditResponse.json();
+        if (!creditResponse.ok) throw Object.assign(new Error(creditResult.error || 'Could not save Session Credit'), { reflectionSaved: true });
+      }
+      addToast({ type: 'success', message: reflForm.session_credit_enabled ? 'Reflection and time credit saved' : 'Reflection saved' });
       setView('list'); fetchSessions();
     } catch (err) {
-      addToast({ type: 'error', message: `Could not save reflection: ${err.message}` });
+      addToast({ type: 'error', message: err.reflectionSaved ? `Reflection saved, but Session Credit was not recorded: ${err.message}` : `Could not save reflection: ${err.message}` });
     } finally { setSaving(false); }
   };
 
@@ -190,6 +209,14 @@ export default function SessionReflection() {
         participation_status: participant.participation_status === 'scheduled' ? 'attended' : participant.participation_status,
         attendance_note: participant.attendance_note ?? '',
       })),
+      session_credit_enabled: false,
+      credit_mode: 'shortfall',
+      credit_player_ids: participants.map(participant => participant.player_id),
+      planned_duration_minutes: session.duration_minutes ?? '',
+      actual_duration_minutes: session.duration_minutes ?? '',
+      credit_minutes: '',
+      credit_reason: 'weather',
+      credit_note: '',
       trio_prediction_error: '', trio_consolidation: '', trio_emotional_anchor: '',
     });
     setView('reflect');
@@ -197,6 +224,11 @@ export default function SessionReflection() {
 
   const selectedProgramme = programmes.find(programme => programme.id === newForm.programme_id);
   const sessionLabel = session => session.programme_name || SESSION_TYPES.find(type => type.value === session.session_plan?.session_type)?.label || session.session_plan?.session_type || 'Session';
+  const calculatedCreditMinutes = reflForm.credit_mode === 'shortfall'
+    ? Math.max(0, Number(reflForm.planned_duration_minutes || 0) - Number(reflForm.actual_duration_minutes || 0))
+    : Number(reflForm.credit_minutes || 0);
+  const creditEntryReady = !reflForm.session_credit_enabled
+    || (calculatedCreditMinutes > 0 && reflForm.credit_player_ids.length > 0);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -325,6 +357,7 @@ export default function SessionReflection() {
                 </div>
                 <VoiceCapture sessionId={selectedSession.id} playerId={selectedSession.player_id} onCaptureSaved={() => fetchSessions()} />
                 {reflForm.participant_attendance.length > 0 && <section className="rounded-lg border border-gray-200 bg-white p-4" aria-labelledby="attendance-heading"><div><h3 id="attendance-heading" className="text-sm font-semibold text-gray-700">Participation</h3><p className="mt-1 text-xs text-gray-500">Confirm attendance for every Player Register entry linked to this session. Scheduled participants default to attended when the reflection is saved.</p></div><div className="mt-3 space-y-2">{reflForm.participant_attendance.map(participant => <div key={participant.player_id} className="flex flex-col gap-2 rounded-lg bg-gray-50 p-3 sm:flex-row sm:items-center"><p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800">{participant.player_name || 'Player'}</p><label className="sr-only" htmlFor={`attendance-${participant.player_id}`}>Attendance status for {participant.player_name || 'player'}</label><select id={`attendance-${participant.player_id}`} value={participant.participation_status} onChange={event => setReflForm(form => ({ ...form, participant_attendance: form.participant_attendance.map(current => current.player_id === participant.player_id ? { ...current, participation_status: event.target.value } : current) }))} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[--primary-green]"><option value="attended">Attended</option><option value="absent">Absent</option><option value="excused">Excused</option><option value="scheduled">Scheduled</option></select></div>)}</div></section>}
+                <section className="rounded-lg border border-sky-200 bg-sky-50/60 p-4" aria-labelledby="session-credit-heading"><div className="flex items-start justify-between gap-3"><div><h3 id="session-credit-heading" className="text-sm font-semibold text-gray-800">Session Credit</h3><p className="mt-1 text-xs leading-5 text-gray-600">Record make-up time owed only when applicable. This is separate from attendance and does not affect retention, invoices, Stripe or payments.</p></div><label className="flex shrink-0 items-center gap-2 text-xs font-semibold text-sky-900"><input type="checkbox" checked={reflForm.session_credit_enabled} onChange={event => setReflForm(form => ({ ...form, session_credit_enabled: event.target.checked }))} className="h-4 w-4 rounded border-sky-300 text-[--primary-green] focus:ring-[--primary-green]" />Record credit</label></div>{reflForm.session_credit_enabled && <div className="mt-4 space-y-4 border-t border-sky-200 pt-4"><div className="flex flex-wrap gap-2" role="group" aria-label="Session Credit method"><button type="button" onClick={() => setReflForm(form => ({ ...form, credit_mode: 'shortfall' }))} className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${reflForm.credit_mode === 'shortfall' ? 'border-[--primary-green] bg-green-50 text-[--primary-green]' : 'border-gray-200 bg-white text-gray-600'}`}>Calculate shortfall</button><button type="button" onClick={() => setReflForm(form => ({ ...form, credit_mode: 'direct' }))} className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${reflForm.credit_mode === 'direct' ? 'border-[--primary-green] bg-green-50 text-[--primary-green]' : 'border-gray-200 bg-white text-gray-600'}`}>Enter minutes directly</button></div>{reflForm.credit_mode === 'shortfall' ? <div className="grid grid-cols-2 gap-3"><label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Planned minutes<input type="number" min="1" max="480" value={reflForm.planned_duration_minutes} onChange={event => setReflForm(form => ({ ...form, planned_duration_minutes: event.target.value }))} className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[--primary-green]" /></label><label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Delivered minutes<input type="number" min="0" max="480" value={reflForm.actual_duration_minutes} onChange={event => setReflForm(form => ({ ...form, actual_duration_minutes: event.target.value }))} className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[--primary-green]" /></label></div> : <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500">Credit owed (minutes)<input type="number" min="1" max="480" value={reflForm.credit_minutes} onChange={event => setReflForm(form => ({ ...form, credit_minutes: event.target.value }))} className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[--primary-green]" /></label>}<div><p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Credit applies to</p><div className="mt-2 flex flex-wrap gap-2">{reflForm.participant_attendance.map(participant => <label key={participant.player_id} className="inline-flex items-center gap-2 rounded-lg border border-sky-200 bg-white px-2.5 py-1.5 text-xs text-gray-700"><input type="checkbox" checked={reflForm.credit_player_ids.includes(participant.player_id)} onChange={event => setReflForm(form => ({ ...form, credit_player_ids: event.target.checked ? [...form.credit_player_ids, participant.player_id] : form.credit_player_ids.filter(id => id !== participant.player_id) }))} className="h-3.5 w-3.5 rounded border-sky-300 text-[--primary-green] focus:ring-[--primary-green]" />{participant.player_name || 'Player'}</label>)}</div></div><div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Reason<select value={reflForm.credit_reason} onChange={event => setReflForm(form => ({ ...form, credit_reason: event.target.value }))} className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm normal-case text-gray-800 focus:outline-none focus:ring-2 focus:ring-[--primary-green]"><option value="weather">Weather</option><option value="coach_cancellation">Coach cancellation</option><option value="facility_closure">Facility closure</option><option value="shortened_session">Shortened session</option><option value="other">Other</option></select></label><label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Credit preview<p className="mt-1 rounded-lg border border-sky-200 bg-white px-3 py-2 text-sm font-bold normal-case text-sky-800">{calculatedCreditMinutes > 0 ? `${calculatedCreditMinutes} mins owed` : 'Enter a positive shortfall'}</p></label></div><label className="block text-xs font-semibold uppercase tracking-wide text-gray-500">Note (optional)<textarea value={reflForm.credit_note} onChange={event => setReflForm(form => ({ ...form, credit_note: event.target.value }))} rows={2} placeholder="e.g. rain stopped play after 25 minutes" className="mt-1 w-full resize-y rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm normal-case text-gray-800 focus:outline-none focus:ring-2 focus:ring-[--primary-green]" /></label></div>}</section>
                 {selectedSession.is_group_session && (
                   <section className="rounded-lg border border-gray-200 bg-white p-4" aria-labelledby="standby-heading">
                     <div className="flex items-center justify-between gap-2">
@@ -366,10 +399,12 @@ export default function SessionReflection() {
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[--primary-green]"
                     aria-label="General reflection" />
                 </div>
-                <button type="button" onClick={handleSaveReflection} disabled={saving}
+                <button type="button" onClick={handleSaveReflection} disabled={saving || !creditEntryReady}
+                  title={!creditEntryReady ? 'Enter positive Session Credit minutes and select at least one player.' : undefined}
                   className="w-full rounded-lg bg-[--primary-green] py-2 text-sm font-medium text-white disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">
                   {saving ? 'Saving…' : 'Save reflection'}
                 </button>
+                {reflForm.session_credit_enabled && !creditEntryReady && <p className="text-center text-xs text-sky-800">Enter positive credit minutes and select at least one player to save both records.</p>}
               </div>
             )}
           </main>

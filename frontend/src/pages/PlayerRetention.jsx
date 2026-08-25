@@ -206,6 +206,7 @@ export default function PlayerRetention() {
   const [draft, setDraft] = useState(null);
   const [draftTags, setDraftTags] = useState([]);
   const [draftLoading, setDraftLoading] = useState(false);
+  const [creditUpdating, setCreditUpdating] = useState(null);
 
   const fetchPlayers = useCallback(async () => {
     const response = await fetch(`${API_BASE}/players?limit=100&active=${filterStatus}`, { headers: authHeaders() });
@@ -314,6 +315,31 @@ export default function PlayerRetention() {
       addToast({ type: 'error', message: error.message });
     } finally {
       setArchiving(false);
+    }
+  };
+
+  const updateCreditResolution = async credit => {
+    if (!selectedPlayer || creditUpdating) return;
+    setCreditUpdating(credit.id);
+    try {
+      const response = await fetch(`${API_BASE}/session-credits/${credit.id}/resolve`, {
+        method: 'PATCH',
+        headers: jsonHeaders(),
+        body: JSON.stringify({ is_resolved: !credit.is_resolved }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not update Session Credit');
+      setSelectedPlayer(current => current?.id === result.credit.player_id ? {
+        ...current,
+        open_credit_minutes: Math.max(0, Number(current.open_credit_minutes || 0) + (result.credit.is_resolved ? -Number(result.credit.credit_minutes) : Number(result.credit.credit_minutes))),
+        session_credits: (current.session_credits || []).map(item => item.id === result.credit.id ? { ...item, ...result.credit } : item),
+      } : current);
+      addToast({ type: 'success', message: result.credit.is_resolved ? 'Make-up time recorded. The balance is updated.' : 'Session Credit reopened.' });
+      await refreshDatabase({ quiet: true });
+    } catch (error) {
+      addToast({ type: 'error', message: error.message });
+    } finally {
+      setCreditUpdating(null);
     }
   };
 
@@ -479,6 +505,7 @@ export default function PlayerRetention() {
                           <div className="pl-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Last session</p><p className="mt-1 text-sm font-bold text-gray-800">{player.last_session_date ? formatDate(player.last_session_date).replace(/ \d{4}$/, '') : '—'}</p></div>
                         </div>
                         {player.programmes?.length > 0 && <p className="mt-3 truncate text-xs text-gray-500"><span className="font-semibold text-gray-700">Programmes:</span> {player.programmes.map(programme => programme.name).join(' · ')}</p>}
+                        {Number(player.open_credit_minutes) > 0 && <p className="mt-2 inline-flex rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800"><span aria-hidden="true">◷</span><span className="ml-1">{player.open_credit_minutes} mins Session Credit owed</span></p>}
                       </button>
                     );
                   })}
@@ -504,12 +531,13 @@ export default function PlayerRetention() {
             </div>
 
             {detailLoading ? <div className="py-12 text-center text-sm text-gray-500">Loading complete player record…</div> : <>
-              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
                 {[
                   { label: 'Engagement', value: formattedScore(selectedPlayer.engagement_score) },
                   { label: 'Sessions logged', value: selectedPlayer.total_sessions ?? 0 },
                   { label: 'This month', value: selectedPlayer.sessions_this_month ?? 0 },
                   { label: 'Last session', value: selectedPlayer.last_session_date ? formatDate(selectedPlayer.last_session_date).replace(/ \d{4}$/, '') : '—' },
+                  { label: 'Credit owed', value: Number(selectedPlayer.open_credit_minutes) ? `${selectedPlayer.open_credit_minutes} mins` : 'None' },
                 ].map(item => <div key={item.label} className="rounded-lg bg-gray-50 p-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{item.label}</p><p className="mt-1 text-sm font-bold text-gray-800">{item.value}</p></div>)}
               </div>
 
@@ -530,6 +558,8 @@ export default function PlayerRetention() {
               <section className="mt-5 border-t border-gray-100 pt-5" aria-labelledby="player-programmes-title"><h3 id="player-programmes-title" className="text-sm font-bold text-gray-900">Coaching Programmes</h3>{selectedPlayer.programmes?.length ? <div className="mt-3 flex flex-wrap gap-2">{selectedPlayer.programmes.map(programme => <span key={programme.id} className="rounded-full bg-green-50 px-3 py-1.5 text-xs font-semibold text-[--primary-green]">{programme.name} · {programme.programme_type}</span>)}</div> : <p className="mt-2 text-sm text-gray-500">No Programmes assigned. Edit the record to link this player to a coaching schedule.</p>}</section>
 
               <section className="mt-5 border-t border-gray-100 pt-5" aria-labelledby="player-session-history-title"><div className="flex flex-wrap items-baseline justify-between gap-2"><div><h3 id="player-session-history-title" className="text-sm font-bold text-gray-900">Session participation</h3><p className="mt-0.5 text-xs text-gray-500">Attendance-led history from linked sessions.</p></div><span className="text-xs font-semibold text-gray-500">{selectedPlayer.total_sessions ?? 0} attended{selectedPlayer.absent_sessions ? ` · ${selectedPlayer.absent_sessions} absent` : ''}</span></div>{selectedPlayer.session_history?.length ? <div className="mt-3 space-y-2">{selectedPlayer.session_history.map(session => <article key={session.id} className="rounded-lg border border-gray-100 bg-gray-50 p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-semibold text-gray-800">{session.programme_name || session.session_note || 'Coaching session'}</p><p className="mt-0.5 text-xs text-gray-500">{formatDate(session.session_date)}{session.duration_minutes ? ` · ${session.duration_minutes} mins` : ''}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${session.participation_status === 'attended' ? 'bg-green-100 text-green-700' : session.participation_status === 'absent' ? 'bg-red-100 text-red-700' : session.participation_status === 'excused' ? 'bg-amber-100 text-amber-700' : 'bg-gray-200 text-gray-600'}`}>{session.participation_status}</span></div>{(session.reflection_text || session.session_note || session.attendance_note) && <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-600">{session.reflection_text || session.session_note || session.attendance_note}</p>}</article>)}</div> : <p className="mt-2 text-sm text-gray-500">No session participation has been logged for this player yet.</p>}</section>
+
+              <section className="mt-5 border-t border-gray-100 pt-5" aria-labelledby="player-credit-title"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 id="player-credit-title" className="text-sm font-bold text-gray-900">Session Credit</h3><p className="mt-0.5 max-w-md text-xs leading-5 text-gray-500">{Number(selectedPlayer.open_credit_minutes) ? `${selectedPlayer.open_credit_minutes} minutes of make-up time are currently owed.` : 'No make-up time is currently owed.'} This is a time-only coaching record; it does not change attendance, retention, invoices or payments.</p></div><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${Number(selectedPlayer.open_credit_minutes) ? 'bg-sky-100 text-sky-800' : 'bg-gray-100 text-gray-600'}`}>{Number(selectedPlayer.open_credit_minutes) ? `${selectedPlayer.open_credit_minutes} mins owed` : 'Clear'}</span></div>{selectedPlayer.session_credits?.length ? <div className="mt-3 space-y-2">{selectedPlayer.session_credits.map(credit => <article key={credit.id} className={`rounded-lg border p-3 ${credit.is_resolved ? 'border-gray-100 bg-gray-50' : 'border-sky-100 bg-sky-50/60'}`}><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-semibold text-gray-800">{credit.credit_minutes} mins · {String(credit.credit_reason || 'other').replaceAll('_', ' ')}</p><p className="mt-0.5 text-xs text-gray-500">{formatDate(credit.credit_date)}{credit.planned_duration_minutes != null && credit.actual_duration_minutes != null ? ` · planned ${credit.planned_duration_minutes} / delivered ${credit.actual_duration_minutes} mins` : ''}</p>{credit.note && <p className="mt-2 text-xs leading-5 text-gray-600">{credit.note}</p>}</div><button type="button" disabled={creditUpdating === credit.id} onClick={() => updateCreditResolution(credit)} className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">{creditUpdating === credit.id ? 'Updating…' : credit.is_resolved ? 'Reopen credit' : 'Mark time made up'}</button></div></article>)}</div> : <p className="mt-2 text-sm text-gray-500">No Session Credits are recorded for this player.</p>}</section>
 
               {selectedPlayer.notes && <section className="mt-5 border-t border-gray-100 pt-5" aria-labelledby="player-notes-title"><h3 id="player-notes-title" className="text-sm font-bold text-gray-900">Coaching notes</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">{selectedPlayer.notes}</p></section>}
 
