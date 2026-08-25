@@ -70,12 +70,12 @@ export default function SessionReflection() {
   const [sessionPlanningDismissed, setSessionPlanningDismissed] = useState(() => isNudgeDismissed(NUDGE_DISMISSALS.sessionPlanning));
 
   const [newForm, setNewForm] = useState({
-    player_id: '', programme_id: '', session_type: 'individual', duration_minutes: 60,
+    player_id: '', participant_ids: [], programme_id: '', session_type: 'individual', duration_minutes: 60,
     session_date: new Date().toISOString().slice(0, 10), session_plan_notes: '',
   });
 
   const [reflForm, setReflForm] = useState({
-    reflection_text: '',
+    reflection_text: '', participant_attendance: [],
     trio_prediction_error: '', trio_consolidation: '', trio_emotional_anchor: '',
   });
 
@@ -136,6 +136,7 @@ export default function SessionReflection() {
         method: 'POST', headers: authHeaders(true),
         body: JSON.stringify({
           player_id: newForm.player_id,
+          participant_ids: newForm.participant_ids,
           programme_id: newForm.programme_id || null,
           session_date: newForm.session_date,
           duration_minutes: newForm.duration_minutes,
@@ -166,7 +167,7 @@ export default function SessionReflection() {
       ].filter(Boolean).join('\n\n');
       const res = await fetch(`${API_BASE}/sessions/${selectedSession.id}/reflection`, {
         method: 'POST', headers: authHeaders(true),
-        body: JSON.stringify({ reflection_text: combined }),
+        body: JSON.stringify({ reflection_text: combined, participant_attendance: reflForm.participant_attendance }),
       });
       if (!res.ok) throw new Error(`${res.status}`);
       addToast({ type: 'success', message: 'Reflection saved' });
@@ -178,7 +179,19 @@ export default function SessionReflection() {
 
   const openReflection = (session) => {
     setSelected(session);
-    setReflForm({ reflection_text: session.reflection_text ?? '', trio_prediction_error: '', trio_consolidation: '', trio_emotional_anchor: '' });
+    const participants = session.participants?.length
+      ? session.participants
+      : (session.player_id ? [{ player_id: session.player_id, player_name: session.player_name, participation_status: 'scheduled' }] : []);
+    setReflForm({
+      reflection_text: session.reflection_text ?? '',
+      participant_attendance: participants.map(participant => ({
+        player_id: participant.player_id,
+        player_name: participant.player_name,
+        participation_status: participant.participation_status === 'scheduled' ? 'attended' : participant.participation_status,
+        attendance_note: participant.attendance_note ?? '',
+      })),
+      trio_prediction_error: '', trio_consolidation: '', trio_emotional_anchor: '',
+    });
     setView('reflect');
   };
 
@@ -242,8 +255,8 @@ export default function SessionReflection() {
                             {sessionLabel(s)}
                           </span>
                           <div className="min-w-0">
-                            <p className="font-semibold text-gray-800 text-sm truncate">{s.player_name ?? '—'}</p>
-                            <p className="text-xs text-gray-400">{new Date(s.session_date).toLocaleDateString('en-GB')} · {s.duration_minutes}min</p>
+                            <p className="font-semibold text-gray-800 text-sm truncate">{s.participants?.map(participant => participant.player_name).join(' · ') || s.player_name || 'No player linked'}</p>
+                            <p className="text-xs text-gray-400">{new Date(s.session_date).toLocaleDateString('en-GB')} · {s.duration_minutes}min{s.participants?.length ? ` · ${s.attended_count ?? 0}/${s.participants.length} attended` : ''}</p>
                           </div>
                         </div>
                         <button type="button" onClick={() => openReflection(s)}
@@ -267,6 +280,16 @@ export default function SessionReflection() {
                     <option value="">— Select player —</option>
                     {players.map(player => <option key={player.id} value={player.id}>{player.name}</option>)}
                   </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Additional participants</label>
+                  <p className="mb-2 text-xs leading-5 text-gray-500">For a group or pair, keep the lead player above and choose every additional Player Register entry attending this session.</p>
+                  <select id="session-participants" name="participantIds" multiple value={newForm.participant_ids} onChange={event => setNewForm(form => ({ ...form, participant_ids: Array.from(event.target.selectedOptions, option => option.value) }))}
+                    className="h-28 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green]" aria-describedby="session-participants-help">
+                    {players.filter(player => player.id !== newForm.player_id).map(player => <option key={player.id} value={player.id}>{player.name}</option>)}
+                  </select>
+                  <p id="session-participants-help" className="mt-1 text-xs text-gray-500">Hold Ctrl or Command to select more than one player.</p>
                 </div>
 
                 <div className="rounded-xl border border-[--primary-green]/20 bg-green-50/50 p-4">
@@ -297,10 +320,11 @@ export default function SessionReflection() {
             {view === 'reflect' && selectedSession && (
               <div className="max-w-xl space-y-5">
                 <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
-                  <p className="font-semibold text-gray-800">{selectedSession.player_name ?? 'Session'}</p>
+                  <p className="font-semibold text-gray-800">{selectedSession.participants?.map(participant => participant.player_name).join(' · ') || selectedSession.player_name || 'Session'}</p>
                   <p>{sessionLabel(selectedSession)} · {selectedSession.duration_minutes}min · {new Date(selectedSession.session_date).toLocaleDateString('en-GB')}</p>
                 </div>
                 <VoiceCapture sessionId={selectedSession.id} playerId={selectedSession.player_id} onCaptureSaved={() => fetchSessions()} />
+                {reflForm.participant_attendance.length > 0 && <section className="rounded-lg border border-gray-200 bg-white p-4" aria-labelledby="attendance-heading"><div><h3 id="attendance-heading" className="text-sm font-semibold text-gray-700">Participation</h3><p className="mt-1 text-xs text-gray-500">Confirm attendance for every Player Register entry linked to this session. Scheduled participants default to attended when the reflection is saved.</p></div><div className="mt-3 space-y-2">{reflForm.participant_attendance.map(participant => <div key={participant.player_id} className="flex flex-col gap-2 rounded-lg bg-gray-50 p-3 sm:flex-row sm:items-center"><p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800">{participant.player_name || 'Player'}</p><label className="sr-only" htmlFor={`attendance-${participant.player_id}`}>Attendance status for {participant.player_name || 'player'}</label><select id={`attendance-${participant.player_id}`} value={participant.participation_status} onChange={event => setReflForm(form => ({ ...form, participant_attendance: form.participant_attendance.map(current => current.player_id === participant.player_id ? { ...current, participation_status: event.target.value } : current) }))} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[--primary-green]"><option value="attended">Attended</option><option value="absent">Absent</option><option value="excused">Excused</option><option value="scheduled">Scheduled</option></select></div>)}</div></section>}
                 {selectedSession.is_group_session && (
                   <section className="rounded-lg border border-gray-200 bg-white p-4" aria-labelledby="standby-heading">
                     <div className="flex items-center justify-between gap-2">

@@ -34,7 +34,7 @@ requireText(playersRoute, 'programme_ids', 'Player API must accept Programme IDs
 requireText(playersRoute, 'programme_info.programmes', 'Player API must return Programme context');
 
 requireText(sessionsRoute, 'programme_id', 'Session API must accept Programme IDs');
-requireText(sessionsRoute, "programme ? programme.programme_type !== 'individual' : is_group_session", 'Programme sessions must derive group semantics while preserving the legacy fallback');
+requireText(sessionsRoute, "programme ? programme.programme_type !== 'individual' : (is_group_session || participantIds.length > 1)", 'Programme sessions must derive group semantics while preserving the legacy fallback');
 requireText(sessionsRoute, "programme.programme_type === 'pair' ? 'group' : programme.programme_type", 'Programme sessions must preserve the legacy session_type vocabulary for existing consumers');
 
 requireText(playerPage, 'player-programmes', 'Player register is missing Programme selection control');

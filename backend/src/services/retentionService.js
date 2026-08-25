@@ -10,10 +10,13 @@ async function recordSessionMetrics(session) {
   try {
     // Get recent sessions to calculate trends
     const recentSessions = await query(`
-      SELECT enjoyment_score, engagement_score, session_date, is_completed
-      FROM sessions
-      WHERE player_id = $1 AND is_completed = true
-      ORDER BY session_date DESC LIMIT 10
+      SELECT s.enjoyment_score, s.engagement_score, s.session_date, s.is_completed
+      FROM session_participants sp
+      JOIN sessions s ON s.id = sp.session_id
+      WHERE sp.player_id = $1
+        AND sp.participation_status = 'attended'
+        AND s.is_completed = true
+      ORDER BY s.session_date DESC LIMIT 10
     `, [session.player_id]);
 
     const rows = recentSessions.rows;
@@ -22,18 +25,26 @@ async function recordSessionMetrics(session) {
 
     // Count sessions missed in last 30 days
     const missedResult = await query(`
-      SELECT COUNT(*) FROM sessions
-      WHERE player_id = $1
-        AND session_date >= NOW() - INTERVAL '30 days'
-        AND (is_completed = false AND cancelled_reason IS NULL)
+      SELECT COUNT(*)
+      FROM session_participants sp
+      JOIN sessions s ON s.id = sp.session_id
+      WHERE sp.player_id = $1
+        AND s.session_date >= CURRENT_DATE - INTERVAL '30 days'
+        AND (
+          sp.participation_status = 'absent'
+          OR (sp.participation_status = 'scheduled' AND s.session_date < CURRENT_DATE)
+        )
     `, [session.player_id]);
     const sessionsMissed = parseInt(missedResult.rows[0].count);
 
     // Days since last session
     const daysSinceResult = await query(`
-      SELECT CURRENT_DATE - MAX(session_date) as days_since
-      FROM sessions
-      WHERE player_id = $1 AND is_completed = true
+      SELECT CURRENT_DATE - MAX(s.session_date) as days_since
+      FROM session_participants sp
+      JOIN sessions s ON s.id = sp.session_id
+      WHERE sp.player_id = $1
+        AND sp.participation_status = 'attended'
+        AND s.is_completed = true
     `, [session.player_id]);
     const daysSince = parseInt(daysSinceResult.rows[0]?.days_since) || 0;
 
@@ -98,9 +109,12 @@ async function getPlayerRiskSummary(playerId) {
       WHERE player_id = $1 ORDER BY recorded_date DESC LIMIT 10
     `, [playerId]),
     query(`
-      SELECT session_date, enjoyment_score, engagement_score, is_completed
-      FROM sessions WHERE player_id = $1
-      ORDER BY session_date DESC LIMIT 20
+      SELECT s.session_date, s.enjoyment_score, s.engagement_score, s.is_completed,
+        sp.participation_status, sp.attendance_note
+      FROM session_participants sp
+      JOIN sessions s ON s.id = sp.session_id
+      WHERE sp.player_id = $1
+      ORDER BY s.session_date DESC LIMIT 20
     `, [playerId]),
   ]);
 
