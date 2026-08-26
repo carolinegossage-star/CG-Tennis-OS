@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { storeSession } from '../utils/authSession';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '';
 const PLANS = {
@@ -33,7 +34,7 @@ export default function Register() {
         const validation = Array.isArray(data.errors) ? data.errors.map(item => item.msg).join(' ') : '';
         throw new Error(validation || data.error || data.message || 'Unable to create your account. Please try again.');
       }
-      localStorage.setItem('cgto_token', data.accessToken);
+      storeSession(data);
       localStorage.setItem('cgto_selected_plan', form.plan);
       navigate('/dashboard', { replace: true });
     } catch (err) {

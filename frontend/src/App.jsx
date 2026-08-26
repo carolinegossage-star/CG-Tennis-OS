@@ -17,6 +17,8 @@ import LandingPage from './pages/LandingPage';
 import ArchetypeAssessment from './pages/ArchetypeAssessment';
 import { Pricing } from './pages/Pricing';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import { CommunityKnowledge, SafetyChecklists, AlertsNotifications, AIAssistant } from './pages/pages7to10';
 function ProtectedRoute({ children }) {
   const location = useLocation();
@@ -45,6 +47,8 @@ function AppWithInit() {
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/register" element={<Register />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/auth/reset-password" element={<ResetPassword />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/players" element={<ProtectedRoute><PlayerRetention /></ProtectedRoute>} />
       <Route path="/programmes" element={<ProtectedRoute><CoachingProgrammes /></ProtectedRoute>} />
