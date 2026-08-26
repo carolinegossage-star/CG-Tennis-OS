@@ -21,7 +21,7 @@ Use **Individual** for one-to-one coaching, **Pair** for two-player sessions, an
 
 | Field | Coaching use |
 |---|---|
-| **Name** | Use a recognisable operating name, such as “Tuesday Performance Pair”. |
+| **Name** | Use a recognisable operating name, such as “Tuesday Advanced Pair”. |
 | **Type** | Select Individual, Pair or Group so session structure is clear. |
 | **Days and time** | Record the normal delivery rhythm for planning and renewal conversations. |
 | **Duration** | Use the expected session length; it provides useful context when recording a shortfall. |
