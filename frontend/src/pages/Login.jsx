@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { storeSession } from '../utils/authSession';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
@@ -23,7 +24,7 @@ export default function Login() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || data.message || 'Unable to sign in. Please check your details and try again.');
-      localStorage.setItem('cgto_token', data.accessToken);
+      storeSession(data);
       navigate(searchParams.get('next') || '/dashboard', { replace: true });
     } catch (err) {
       setError(err.message || 'Unable to sign in. Please try again.');
@@ -48,7 +49,10 @@ export default function Login() {
               <input id="login-email" name="email" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} required className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green]" placeholder="you@example.com" aria-label="Email address" />
             </div>
             <div>
-              <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <a href="/forgot-password" className="text-xs font-semibold text-[--primary-green] hover:underline">Forgot password?</a>
+              </div>
               <input id="login-password" name="password" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[--primary-green]" placeholder="Password" aria-label="Password" />
             </div>
             <button type="submit" disabled={loading} className="w-full rounded-lg bg-[--primary-green] py-2.5 text-sm font-medium text-white disabled:opacity-50 hover:bg-[--primary-green-dark] transition-colors focus:outline-none">
