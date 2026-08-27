@@ -138,6 +138,36 @@ async function sendTrialExpiredEmail(email, name) {
   `);
 }
 
+function escapeHtml(value) {
+  return String(value).replace(/[&<>'"]/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    "'": '&#39;',
+    '"': '&quot;',
+  }[character]));
+}
+
+async function sendCoachReadinessTeaserEmail(email, name, report) {
+  const safeName = escapeHtml(name);
+  const safeStage = escapeHtml(report.operatingStageLabel);
+  const safeOpportunity = escapeHtml(report.biggestOpportunityLabel);
+  const registrationUrl = `${appUrl}/register`;
+
+  await send(email, 'Your Coach Operating Readiness result', `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#173047;line-height:1.55;">
+      <h2 style="margin:0 0 20px;">Hi ${safeName},</h2>
+      <p>Thanks for taking the Coach Operating Readiness Index™.</p>
+      <p>Your result: <strong>${safeStage}</strong> — overall score ${report.overallScore}/100.</p>
+      <p>Your biggest opportunity right now is <strong>${safeOpportunity}</strong>.</p>
+      <p>Create your free CG Tennis OS™ account and we'll follow up with your full Coach Operating Readiness Report™ — the complete breakdown across all six dimensions, plus your three recommended next moves.</p>
+      <a href="${registrationUrl}" style="background:#cc643d;color:#ffffff;padding:12px 20px;text-decoration:none;display:inline-block;font-weight:700;">Create your free account</a>
+      <p style="margin-top:28px;">This report tells you what's happening. What to do next — in real depth — is something I work through directly with a small number of coaches at a time. If that's ever of interest, keep an eye out.</p>
+      <p>Caroline</p>
+    </div>
+  `);
+}
+
 module.exports = {
   sendVerificationEmail,
   sendPasswordResetEmail,
@@ -147,4 +177,5 @@ module.exports = {
   sendTrialDay13Email,
   sendTrialExtendedEmail,
   sendTrialExpiredEmail,
+  sendCoachReadinessTeaserEmail,
 };

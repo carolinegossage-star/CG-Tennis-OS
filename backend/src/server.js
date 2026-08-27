@@ -15,6 +15,7 @@ const alertService = require('./services/alertService');
 const trialService = require('./services/trialService');
 const retentionFlagService = require('./services/retentionFlagService');
 const parentDraftService = require('./services/parentDraftService');
+const quizLeadService = require('./services/quizLeadService');
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -42,6 +43,7 @@ const {
 const tournamentEventsRoutes = require('./routes/tournamentEvents');
 const tournamentDrawsRoutes = require('./routes/tournamentDraws');
 const tournamentMatchesRoutes = require('./routes/tournamentMatches');
+const quizLeadsRoutes = require('./routes/quizLeads');
 
 const app = express();
 const server = http.createServer(app);
@@ -61,6 +63,7 @@ app.use(helmet({
 // Allowed origins: production frontend, plus localhost for local dev only.
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  process.env.MARKETING_SITE_URL || 'https://cgtennisos.info',
   process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : null,
 ].filter(Boolean);
 
@@ -122,6 +125,7 @@ app.get('/health', (req, res) => {
 
 // ─── API Routes ────────────────────────────────────────────────────────────────
 app.use('/auth', authLimiter, authRoutes);
+app.use('/api/quiz-leads', quizLeadsRoutes);
 app.use('/users', usersRouter);
 app.use('/players', playerRoutes);
 app.use('/tournaments', tournamentRoutes);
@@ -221,6 +225,10 @@ async function start() {
     // Schedule the separate retention-risk scan at 09:00 UTC.
     scheduleDailyRetentionFlagScan();
 
+    // This update affects only unmatched quiz_leads and is intentionally
+    // separate from account creation and all product behaviour.
+    scheduleDailyQuizLeadMatch();
+
     // Graceful shutdown
     process.on('SIGTERM', shutdown);
     process.on('SIGINT', shutdown);
@@ -288,6 +296,26 @@ function scheduleDailyTrialCheck() {
   }, delay);
 
   logger.info(`Daily trial activation check scheduled in ${Math.round(delay / 60000)} minutes`);
+}
+
+function scheduleDailyQuizLeadMatch() {
+  const runAt = new Date();
+  runAt.setUTCHours(6, 0, 0, 0);
+  if (runAt <= new Date()) runAt.setDate(runAt.getDate() + 1);
+  const delay = runAt - Date.now();
+
+  setTimeout(() => {
+    quizLeadService.matchExistingQuizLeadAccounts().catch((err) =>
+      logger.error('Daily quiz lead account match failed', { error: err.message })
+    );
+    setInterval(() => {
+      quizLeadService.matchExistingQuizLeadAccounts().catch((err) =>
+        logger.error('Daily quiz lead account match failed', { error: err.message })
+      );
+    }, 86400000);
+  }, delay);
+
+  logger.info(`Daily quiz lead account match scheduled in ${Math.round(delay / 60000)} minutes`);
 }
 
 async function shutdown() {
