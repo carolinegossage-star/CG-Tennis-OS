@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { BottomNav } from '../components/BottomNav';
 import { LoadingOverlay } from '../components/LoadingOverlay';
@@ -107,6 +108,9 @@ function PlayerForm({ player, programmes, submitting, onCancel, onSubmit }) {
   }));
 
   const update = (field, value) => setForm(current => ({ ...current, [field]: value }));
+  const toggleProgramme = programmeId => update('programme_ids', (form.programme_ids ?? []).includes(programmeId)
+    ? form.programme_ids.filter(id => id !== programmeId)
+    : [...(form.programme_ids ?? []), programmeId]);
 
   const submit = event => {
     event.preventDefault();
@@ -150,13 +154,20 @@ function PlayerForm({ player, programmes, submitting, onCancel, onSubmit }) {
 
       <fieldset className="mt-6 border-t border-gray-100 pt-5">
         <legend className="text-sm font-bold text-gray-800">Coaching Programmes</legend>
-        <p className="mt-1 text-xs leading-5 text-gray-500">Select the existing Programmes this player attends. Hold Ctrl or Command to choose more than one.</p>
-        <label className={`${labelClass} mt-3`}>Assigned Programmes
-          <select id="player-programmes" name="programmeIds" multiple value={form.programme_ids ?? []} onChange={event => update('programme_ids', Array.from(event.target.selectedOptions, option => option.value))} className={`${inputClass} h-32`} aria-describedby="player-programmes-help">
-            {programmes.map(programme => <option key={programme.id} value={programme.id}>{programme.name} · {programme.programme_type}</option>)}
-          </select>
-        </label>
-        <p id="player-programmes-help" className="mt-2 text-xs text-gray-500">{programmes.length ? 'Programme assignments are structured links, not free-text notes.' : 'Create a Coaching Programme first, then return here to assign it.'}</p>
+        <p className="mt-1 text-sm leading-5 text-gray-600">Choose every Programme this player attends. Tap or click each Programme—no keyboard shortcuts are needed.</p>
+        {programmes.length ? <>
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2" role="group" aria-label="Assigned Programmes">
+            {programmes.map(programme => {
+              const selected = (form.programme_ids ?? []).includes(programme.id);
+              return <label key={programme.id} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left transition ${selected ? 'border-[--primary-green] bg-green-50' : 'border-gray-200 bg-white hover:border-green-300 hover:bg-green-50/40'}`}>
+                <input type="checkbox" checked={selected} onChange={() => toggleProgramme(programme.id)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[--primary-green] focus:ring-[--primary-green]" />
+                <span className="min-w-0"><span className="block text-sm font-bold text-gray-800">{programme.name}</span><span className="mt-0.5 block text-xs font-medium text-gray-500">{programme.programme_type}{programme.start_time ? ` · ${String(programme.start_time).slice(0, 5)}` : ''}</span></span>
+              </label>;
+            })}
+          </div>
+          <p className="mt-3 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-[--primary-green]" role="status" aria-live="polite">{(form.programme_ids ?? []).length ? `${form.programme_ids.length} Programme${form.programme_ids.length === 1 ? '' : 's'} selected and ready to save.` : 'No Programmes selected yet.'}</p>
+        </> : <div className="mt-3 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-4"><p className="text-sm font-semibold text-gray-700">No active Programmes yet.</p><p className="mt-1 text-sm text-gray-500">Create a Programme first, then return here to assign this player to it.</p><a href="/programmes" className="mt-3 inline-flex rounded-lg bg-[--primary-green] px-3 py-2 text-sm font-bold text-white transition hover:brightness-95">Create Programme</a></div>}
+        <p id="player-programmes-help" className="mt-3 text-xs text-gray-500">Programme assignments are structured links, not free-text notes. You will see a confirmation after saving.</p>
       </fieldset>
 
       <fieldset className="mt-6 border-t border-gray-100 pt-5">
@@ -292,7 +303,9 @@ export default function PlayerRetention() {
       if (!response.ok) throw new Error(result.error || result.errors?.[0]?.msg || 'Could not save player');
       setFormPlayer(undefined);
       if (isEditing) setSelectedPlayer(current => current?.id === result.id ? { ...current, ...result } : current);
-      addToast({ type: 'success', message: isEditing ? 'Player record updated' : 'Player added to the database' });
+      const assignedProgrammeCount = payload.programme_ids?.length ?? 0;
+      const assignmentMessage = assignedProgrammeCount ? ` Player assigned to ${assignedProgrammeCount} Programme${assignedProgrammeCount === 1 ? '' : 's'}.` : '';
+      addToast({ type: 'success', message: isEditing ? `Player record updated.${assignmentMessage}` : `Player added to the database.${assignmentMessage}` });
       await refreshDatabase({ quiet: true });
     } catch (error) {
       addToast({ type: 'error', message: error.message });
@@ -401,7 +414,11 @@ export default function PlayerRetention() {
             </div>
             <p className="hidden text-xs text-gray-500 sm:block">A clear coaching record for every player.</p>
           </div>
-          <button type="button" onClick={() => setFormPlayer(null)} className="ml-auto rounded-lg bg-[--primary-green] px-3.5 py-2 text-sm font-semibold text-white transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">+ Add player</button>
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2" aria-label="Player and Programme actions">
+            <Link to="/players" aria-current="page" className="rounded-lg border border-[--primary-green] bg-green-50 px-3 py-2 text-sm font-bold text-[--primary-green] transition hover:bg-green-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">Players</Link>
+            <Link to="/programmes" className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-bold text-violet-800 transition hover:bg-violet-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500">Programmes</Link>
+            <button type="button" onClick={() => setFormPlayer(null)} className="rounded-lg bg-[--primary-green] px-3.5 py-2 text-sm font-semibold text-white transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">+ Add player</button>
+          </div>
         </header>
 
         {loading && <LoadingOverlay message="Loading player database…" />}

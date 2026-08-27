@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { BottomNav } from '../components/BottomNav';
 import { LoadingOverlay } from '../components/LoadingOverlay';
@@ -106,7 +107,7 @@ function ProgrammeForm({ programme, saving, onCancel, onSubmit }) {
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <label className={`${labelClass} sm:col-span-2`}>Programme name<span className="ml-1 text-red-500">*</span><input id="programme-name" name="name" required maxLength="255" value={form.name} onChange={event => update('name', event.target.value)} className={inputClass} placeholder="e.g. Wednesday Performance Group" /></label>
+        <label className={`${labelClass} sm:col-span-2`}>Programme name<span className="ml-1 text-red-500">*</span><input id="programme-name" name="name" required maxLength="255" value={form.name} onChange={event => update('name', event.target.value)} className={inputClass} placeholder="e.g. Wednesday Advanced Group" /></label>
         <label className={labelClass}>Programme type<select id="programme-type" name="programmeType" value={form.programme_type} onChange={event => update('programme_type', event.target.value)} className={inputClass}>{PROGRAMME_TYPES.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}</select></label>
         <label className={labelClass}>Capacity<input id="programme-capacity" name="capacity" type="number" min="1" step="1" value={form.capacity ?? ''} onChange={event => update('capacity', event.target.value)} className={inputClass} placeholder={form.programme_type === 'individual' ? '1' : 'Optional'} /></label>
       </div>
@@ -208,7 +209,11 @@ export default function CoachingProgrammes() {
         <header className="flex flex-wrap items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 sm:px-6">
           <button type="button" className="rounded p-1 text-gray-600 md:hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]" onClick={toggleSidebar} aria-label="Open navigation">☰</button>
           <div><h1 className="text-lg font-bold text-gray-900">Coaching Programmes</h1><p className="hidden text-xs text-gray-500 sm:block">Structured schedules that connect players, sessions and activity.</p></div>
-          <button type="button" onClick={() => setFormProgramme(null)} className="ml-auto rounded-lg bg-[--primary-green] px-3.5 py-2 text-sm font-semibold text-white transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">+ Create Programme</button>
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2" aria-label="Player and Programme actions">
+            <Link to="/players" className="rounded-lg border border-[--primary-green] bg-green-50 px-3 py-2 text-sm font-bold text-[--primary-green] transition hover:bg-green-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">Players</Link>
+            <Link to="/programmes" aria-current="page" className="rounded-lg border border-violet-300 bg-violet-100 px-3 py-2 text-sm font-bold text-violet-900 transition hover:bg-violet-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500">Programmes</Link>
+            <button type="button" onClick={() => setFormProgramme(null)} className="rounded-lg bg-[--primary-green] px-3.5 py-2 text-sm font-semibold text-white transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">+ Create Programme</button>
+          </div>
         </header>
 
         {loading && <LoadingOverlay message="Loading Coaching Programmes…" />}
