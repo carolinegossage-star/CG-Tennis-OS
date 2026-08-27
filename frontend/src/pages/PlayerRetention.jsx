@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { BottomNav } from '../components/BottomNav';
@@ -208,6 +208,8 @@ export default function PlayerRetention() {
   const [search, setSearch] = useState('');
   const [filterRisk, setFilterRisk] = useState('all');
   const [filterStatus, setFilterStatus] = useState('true');
+  const [lastSavedPlayer, setLastSavedPlayer] = useState(null);
+  const playerListRef = useRef(null);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [formPlayer, setFormPlayer] = useState(undefined);
@@ -267,6 +269,14 @@ export default function PlayerRetention() {
   const atRiskCount = players.filter(player => player.is_active !== false && ['high', 'critical'].includes(riskFor(player))).length;
   const averageEngagement = stats?.summary?.avg_engagement;
 
+  const showPlayerList = useCallback(async () => {
+    setSearch('');
+    setFilterRisk('all');
+    setFilterStatus('true');
+    await refreshDatabase({ quiet: true });
+    window.requestAnimationFrame(() => playerListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }, [refreshDatabase]);
+
   const closePlayerPanel = () => {
     setSelectedPlayer(null);
     setDraft(null);
@@ -302,11 +312,13 @@ export default function PlayerRetention() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || result.errors?.[0]?.msg || 'Could not save player');
       setFormPlayer(undefined);
+      setLastSavedPlayer({ id: result.id, name: result.name || payload.name });
       if (isEditing) setSelectedPlayer(current => current?.id === result.id ? { ...current, ...result } : current);
       const assignedProgrammeCount = payload.programme_ids?.length ?? 0;
       const assignmentMessage = assignedProgrammeCount ? ` Player assigned to ${assignedProgrammeCount} Programme${assignedProgrammeCount === 1 ? '' : 's'}.` : '';
       addToast({ type: 'success', message: isEditing ? `Player record updated.${assignmentMessage}` : `Player added to the database.${assignmentMessage}` });
       await refreshDatabase({ quiet: true });
+      window.requestAnimationFrame(() => playerListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
     } catch (error) {
       addToast({ type: 'error', message: error.message });
     } finally {
@@ -415,7 +427,7 @@ export default function PlayerRetention() {
             <p className="hidden text-xs text-gray-500 sm:block">A clear coaching record for every player.</p>
           </div>
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2" aria-label="Player and Programme actions">
-            <Link to="/players" aria-current="page" className="rounded-lg border border-[--primary-green] bg-green-50 px-3 py-2 text-sm font-bold text-[--primary-green] transition hover:bg-green-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">Players</Link>
+            <button type="button" onClick={showPlayerList} aria-current="page" className="rounded-lg border border-[--primary-green] bg-green-50 px-3 py-2 text-sm font-bold text-[--primary-green] transition hover:bg-green-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">Player list ({activePlayerCount})</button>
             <Link to="/programmes" className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-bold text-violet-800 transition hover:bg-violet-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500">Programmes</Link>
             <button type="button" onClick={() => setFormPlayer(null)} className="rounded-lg bg-[--primary-green] px-3.5 py-2 text-sm font-semibold text-white transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">+ Add player</button>
           </div>
@@ -467,7 +479,9 @@ export default function PlayerRetention() {
               ))}
             </section>
 
-            <section aria-labelledby="player-list-title">
+            {lastSavedPlayer && <section className="mb-5 flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" role="status" aria-live="polite"><div><p className="text-sm font-bold text-emerald-900">{lastSavedPlayer.name} is now in your Player database.</p><p className="mt-0.5 text-sm text-emerald-800">The roster below has been refreshed so you can scan every active profile.</p></div><button type="button" onClick={showPlayerList} className="shrink-0 rounded-lg bg-emerald-700 px-3 py-2 text-sm font-bold text-white transition hover:bg-emerald-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600">View player list</button></section>}
+
+            <section ref={playerListRef} aria-labelledby="player-list-title">
               <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
                   <h2 id="player-list-title" className="text-base font-bold text-gray-900">Players</h2>
