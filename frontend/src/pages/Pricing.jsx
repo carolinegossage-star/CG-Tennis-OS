@@ -61,6 +61,10 @@ export function Pricing() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="max-w-5xl mx-auto">
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <Link to="/" className="text-sm font-bold tracking-wide text-gray-900 hover:text-[--primary-green]">CG Tennis OS™</Link>
+          {isSignedIn ? <Link to="/dashboard" className="rounded-lg bg-[--primary-green] px-4 py-2 text-sm font-bold text-white transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">← Back to my coaching system</Link> : <Link to="/login" className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-800 transition hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[--primary-green]">Sign in</Link>}
+        </div>
         <div className="text-center mb-12">
           <p className="text-xs font-bold text-gray-400 tracking-widest uppercase mb-2">Tennis Operating System</p>
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Build better players.</h1>
@@ -124,7 +128,7 @@ export function Pricing() {
 
         <div className="mt-16 max-w-2xl mx-auto text-center text-sm text-gray-500">
           <p>Choose Professional whenever you want the features; the 100-player limit is enforced only when adding active profiles.</p>
-          <p className="mt-3"><Link to="/login" className="font-semibold text-[--primary-green] hover:underline">Already have an account? Sign in</Link></p>
+          <p className="mt-3">{isSignedIn ? <Link to="/dashboard" className="font-bold text-[--primary-green] hover:underline">Return to my coaching system</Link> : <Link to="/login" className="font-semibold text-[--primary-green] hover:underline">Already have an account? Sign in</Link>}</p>
         </div>
       </div>
     </div>
