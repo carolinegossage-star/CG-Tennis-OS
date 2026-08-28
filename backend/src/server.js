@@ -60,12 +60,25 @@ app.use(helmet({
   },
 }));
 
-// Allowed origins: production frontend, plus localhost for local dev only.
-const allowedOrigins = [
+// Allowed origins: production frontend and its configured www alias, plus localhost for local dev only.
+// The Nginx deployment serves both cgtennisos.com and www.cgtennisos.com; both must be
+// explicitly permitted so authenticated browser requests do not fail CORS preflight.
+function wwwAlias(origin) {
+  if (!origin || !/^https?:\/\/[^/]+$/i.test(origin)) return null;
+  const url = new URL(origin);
+  if (url.hostname.startsWith('www.')) return `${url.protocol}//${url.hostname.slice(4)}`;
+  return `${url.protocol}//www.${url.hostname}`;
+}
+
+const configuredOrigins = [
   process.env.FRONTEND_URL,
   process.env.MARKETING_SITE_URL || 'https://cgtennisos.info',
+];
+const allowedOrigins = [...new Set([
+  ...configuredOrigins,
+  ...configuredOrigins.map(wwwAlias),
   process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : null,
-].filter(Boolean);
+].filter(Boolean))];
 
 app.use(cors({
   origin: (origin, callback) => {
