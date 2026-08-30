@@ -11,6 +11,12 @@ const { syncPlayerProgrammes } = require('../services/programmeAssignmentService
 const ACTIVE_PLAYER_CAPS = { solo: 35, professional: 100 };
 const LEGACY_PLAN_ALIASES = { starter: 'solo' };
 
+function requestedCoachId(req) {
+  // A super admin may inspect a named coach roster, but their own Player Register
+  // must remain the default when no coach_id query parameter is supplied.
+  return req.user.role === 'super_admin' && req.query.coach_id ? req.query.coach_id : req.user.id;
+}
+
 function normalizedPlan(plan) {
   return LEGACY_PLAN_ALIASES[plan] || plan || 'solo';
 }
@@ -18,7 +24,7 @@ function normalizedPlan(plan) {
 // GET /players — list coach's players with database-ready summary fields.
 router.get('/', authenticate, async (req, res) => {
   const { search, risk, active = 'true', limit = 50, offset = 0 } = req.query;
-  const coachId = req.user.role === 'super_admin' ? req.query.coach_id : req.user.id;
+  const coachId = requestedCoachId(req);
   const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100);
   const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
 
@@ -131,7 +137,7 @@ router.get('/', authenticate, async (req, res) => {
 // GET /players/analytics/retention — this route must precede /:id.
 router.get('/analytics/retention', authenticate, async (req, res) => {
   try {
-    const coachId = req.user.role === 'super_admin' ? req.query.coach_id : req.user.id;
+    const coachId = requestedCoachId(req);
     const analytics = await retentionService.getCoachRetentionAnalytics(coachId);
     res.json(analytics);
   } catch (err) {
